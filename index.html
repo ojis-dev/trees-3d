@@ -314,12 +314,13 @@
   /* ------------------------------------------------------------ démarrage */
   planterTout();
 
-  // l'aide disparaît d'elle-même, et dès la première interaction
+  // l'aide s'efface d'elle-même après quelques secondes, ou dès la première
+  // interaction : on ne veut pas d'un mode d'emploi qui reste à l'écran
   const aide = document.getElementById('aide');
-  setTimeout(() => aide.classList.add('disparait'), 400);
-  setTimeout(() => aide.classList.add('disparait'), 10000);
-  moteur.renderer.domElement.addEventListener('pointerdown', () => aide.classList.add('disparait'), { once: false });
-  window.addEventListener('keydown', () => aide.classList.add('disparait'));
+  const effacerAide = () => aide.classList.add('disparait');
+  setTimeout(effacerAide, 9000);
+  moteur.renderer.domElement.addEventListener('pointerdown', () => setTimeout(effacerAide, 2500));
+  addEventListener('keydown', effacerAide);
 
   // l'état exposé pour les tests
   window.__jardin = { etat, moteur, arbre, reconstruire };

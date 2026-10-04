@@ -17,6 +17,14 @@
 
 <div class="barre-outils" id="outils" role="toolbar" aria-label="Réglages de la scène"></div>
 
+<div class="chargement" id="chargement">
+  <div class="chargement-boite">
+    <h2 id="ch-titre">Construction du sujet…</h2>
+    <p id="ch-detail">Le tronc pousse, les feuilles se déploient</p>
+    <div class="jauge"><div class="jauge-remplie" id="ch-jauge" style="width:0%"></div></div>
+  </div>
+</div>
+
 <div class="pied">
   <span id="pied-emoji" style="font-size:1.5rem"></span>
   <p id="pied-texte">Modèle unique construit à la volée.</p>
@@ -87,7 +95,25 @@
     sujet.userData.aleatoire = true;
     moteur.controles.volerVers(new THREE.Vector3(0, S.hauteur * .48, 0), S.hauteur * (S.largeur > S.hauteur ? 2.1 : 2.35), .9, 1.24);
   }
-  planter(saisonCourante);
+  // construction animée : la jauge avance pendant que l'arbre se construit
+  const charg = document.getElementById('chargement');
+  const jauge = document.getElementById('ch-jauge');
+  document.getElementById('ch-titre').textContent = S.emoji + '  ' + S.nom;
+  document.getElementById('ch-detail').textContent = S.latin + ' — construction en cours';
+  let progres = 0;
+  const minuteur = setInterval(() => {
+    progres = Math.min(.92, progres + (.92 - progres) * .18);
+    jauge.style.width = (progres * 100).toFixed(0) + '%';
+  }, 90);
+  setTimeout(() => {
+    planter(saisonCourante);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      clearInterval(minuteur);
+      jauge.style.width = '100%';
+      document.getElementById('ch-detail').textContent = 'Prêt';
+      setTimeout(() => { charg.hidden = true; }, 260);
+    }));
+  }, 60);
 
   const aide = document.createElement('div');
   aide.className = 'aide';

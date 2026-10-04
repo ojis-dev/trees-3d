@@ -72,7 +72,9 @@ function creerSandbox(url) {
     console, Math, Date, JSON, Object, Array, Number, String, Boolean, Error, isNaN, isFinite,
     parseFloat, parseInt, Uint8Array, Uint8ClampedArray, Uint16Array, Uint32Array, Int32Array,
     Float32Array, Float64Array, Map, Set, Promise, WeakMap, Symbol, URLSearchParams, RegExp,
-    setTimeout: (cb) => 0, clearTimeout() { }, setInterval: () => 0, clearInterval() { },
+    setTimeout: (cb) => { (sb.__minuteurs = sb.__minuteurs || []).push(cb); return sb.__minuteurs.length; },
+    clearTimeout() { },
+    setInterval: () => 1, clearInterval() { },
     document: documentStub, navigator: { userAgent: 'node' }, devicePixelRatio: 1,
     performance: { now: () => Date.now() },
     requestAnimationFrame: cb => { frames.push(cb); return frames.length; },
@@ -107,8 +109,7 @@ function creerSandbox(url) {
 /* --------------------------------------------------------------- tests --- */
 const pages = ['index.html', 'espece.html?espece=erable', 'espece.html?espece=saule', 'galerie.html', 'arbre.html'];
 let erreurs = 0;
-const aFaire = [];
-const aRetirer = [];
+const bilans = [];
 
 for (const spec of pages) {
   const [fichier, requete] = spec.split('?');
@@ -124,8 +125,17 @@ for (const spec of pages) {
     for (let i = 0; i < inline.length; i++) {
       vm.runInContext(inline[i], sb, { filename: fichier + ' (script inline ' + (i + 1) + ')' });
     }
-    // on déroule les images planifiées (plantation, boucle de rendu)
+    // on déroule les images planifiées (plantation, boucle de rendu) puis, si
+    // la page a différé sa construction, les minuteurs simulés
     for (let k = 0; k < 60 && frames.length; k++) {
+      const lot = frames.splice(0, frames.length);
+      for (const cb of lot) cb(k * 16);
+    }
+    for (let k = 0; k < 4; k++) {
+      const minuteursLances = sb instanceof Object;
+      const files = sb.__minuteurs || [];
+      sb.__minuteurs = [];
+      for (const t of files) t();
       const lot = frames.splice(0, frames.length);
       for (const cb of lot) cb(k * 16);
     }
@@ -139,7 +149,25 @@ for (const spec of pages) {
       .map(l => l.length > 160 ? l.slice(0, 160) + '…' : l).join('\n   ');
     console.error('   ' + lignes);
   } else {
-    console.log('✓ ' + spec + ' — ' + externes.length + ' module(s), ' + inline.length + ' script(s) inline');
+    // contrôle : la page a-t-elle réellement construit de quoi montrer ?
+    const w = sb.window;
+    const moteur = w.__jardin ? w.__jardin.moteur : w.__espece ? w.__espece.moteur : w.__galerie ? w.__galerie.moteur : null;
+    let arbres = 0, meshes = 0, tris = 0;
+    if (moteur) {
+      moteur.scene.traverse(o => {
+        if (o.isMesh) {
+          meshes++;
+          const n = o.geometry.index ? o.geometry.index.count / 3 : (o.geometry.attributes.position ? o.geometry.attributes.position.count / 3 : 0);
+          tris += n * (o.isInstancedMesh ? o.count : 1);
+        }
+      });
+      arbres = moteur.arbres.children.length;
+    }
+    const vide = moteur && meshes < 3;
+    if (vide) { erreurs++; console.error('✗ ' + spec + ' : scène vide après exécution'); }
+    else console.log('✓ ' + spec + ' — ' + externes.length + ' module(s), ' + inline.length + ' script(s) inline' +
+      (moteur ? ', ' + arbres + ' arbre(s), ' + meshes + ' maillages, ' + Math.round(tris / 1000) + ' k facettes' : ''));
+    bilans.push(spec + ' : ' + arbres + ' arbre(s), ' + Math.round(tris / 1000) + ' k facettes');
   }
 }
 
