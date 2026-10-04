@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Planche d'icônes</title>
+<link rel="stylesheet" href="../arbres.css">
+<style>
+  body { margin: 0; padding: 26px; background: #f3efe6; font-family: "Open Sans", system-ui, sans-serif; color: #2c2a24; }
+  h2 { font-size: .95rem; margin: 22px 0 10px; }
+  .planche { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cas { width: 108px; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 10px 8px; text-align: center; }
+  .cas .grand { font-size: 34px; color: #3f6b34; line-height: 1.2; }
+  .cas .petit { font-size: 15px; color: #2c2a24; line-height: 1.6; }
+  .cas code { display: block; font-size: .62rem; color: #777; margin-top: 4px; }
+  .bareme { font-size: .8rem; }
+  .rangee { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+</style></head>
+<body>
+  <h2>Grand (34 px) — toutes les icônes de la table</h2>
+  <div class="planche" id="planche"></div>
+  <h2>Tailles réelles : pastille (15 px) et titre de fiche (27 px)</h2>
+  <div class="bareme" id="bareme"></div>
+  <h2>Barre d'outils reconstituée</h2>
+  <div class="rangee" id="barre"></div>
+<script src="../three.min.js"></script>
+<script src="../arbres-core.js"></script>
+<script src="../arbres-ui.js"></script>
+<script>
+  const U = window.ARBRES_UI;
+  const noms = Object.keys(U.ICONES);
+  document.getElementById('planche').innerHTML = noms.map(n =>
+    '<div class="cas"><div class="grand">' + U.icone(n, '34px') + '</div><code>' + n + '</code></div>').join('');
+  document.getElementById('bareme').innerHTML =
+    '<div>Pastille : ' + noms.slice(0, 12).map(n => '<span style="font-size:15px">' + U.icone(n) + '</span> ').join('') + '</div>' +
+    '<div style="margin-top:8px">Fiche : ' + noms.slice(0, 8).map(n => '<span style="font-size:27px">' + U.icone(n) + '</span> ').join('') + '</div>';
+  document.getElementById('barre').innerHTML =
+    '<button class="bouton-outil actif"><span class="icone">' + U.icone('jour') + '</span><span>Plein jour</span></button>' +
+    '<button class="bouton-outil"><span class="icone">' + U.icone('automne') + '</span><span>Automne</span></button>' +
+    '<button class="bouton-outil"><span class="icone">' + U.icone('rapide') + '</span><span>Rapide</span></button>' +
+    '<button class="bouton-outil"><span class="icone">' + U.icone('diamant') + '</span><span>Maximal</span></button>' +
+    '<button class="bouton-outil"><span class="icone">' + U.icone('oiseaux') + '</span><span>Oiseaux</span></button>' +
+    '<button class="bouton-outil"><span class="icone">' + U.icone('nouveau') + '</span><span>Nouvelle graine</span></button>';
+</script>
+</body></html>
