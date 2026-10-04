@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Érable du Japon</title>
+<style>
+:root{--bg:#dfe8ee;box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg)}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas:active{cursor:grabbing}
+</style>
+</head>
+<body>
+<script src="three.min.js"></script>
+<script>
+(function(){
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const bgc=new THREE.Color(0xdfe8ee);
+const scene=new THREE.Scene();
+scene.background=bgc;scene.fog=new THREE.Fog(bgc,24,80);
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
+renderer.domElement.setAttribute('aria-label','Érable du Japon en automne en 3D : glisser pour tourner, molette ou pincement pour zoomer');
+document.body.appendChild(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+const aniso=renderer.capabilities.getMaxAnisotropy();
+
+scene.add(new THREE.HemisphereLight(0xfff8f0,0x6f8a55,.6));
+const sun=new THREE.DirectionalLight(0xfff2dc,.95);
+sun.position.set(9,16,7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+const sc=sun.shadow.camera;sc.left=sc.bottom=-10;sc.right=sc.top=10;sc.near=1;sc.far=50;
+sun.shadow.bias=-0.001;sun.shadow.normalBias=.03;scene.add(sun);
+
+let seed=88140926;
+function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const up=V(0,1,0);
+const B=[],L=[];
+// du orangé au cramoisi : le cœur de la couronne est plus clair, l'extérieur plus rouge
+const palette=['#ecb23c','#f08f2f','#e8662a','#dc4326','#c42a25','#a91d2c'].map(c=>new THREE.Color(c));
+function perp(d,k){return V(rnd()-.5,rnd()-.5,rnd()-.5).cross(d).normalize().multiplyScalar(k)}
+const posAt=(b,t)=>b.p.clone().addScaledVector(b.d,b.len*t).addScaledVector(b.bv,Math.pow(Math.sin(Math.PI*t),2));
+
+// Feuilles par paires opposées le long des rameaux, étalées presque à plat : c'est ce qui donne les étages
+function leaves(b){
+  const step=b.dep===0?.06:b.dep<=2?.075:.12,n=Math.max(2,Math.round(b.len/step));
+  for(let k=0;k<n;k++){
+    const t=.12+.88*(k+rnd()*.4)/n,p=posAt(b,t);
+    const side0=V().crossVectors(b.d,up);if(side0.lengthSq()<1e-4)continue;side0.normalize();
+    for(const sg of [-1,1]){
+      const fwd=side0.clone().multiplyScalar(sg).addScaledVector(b.d,.35+rnd()*.3).add(V((rnd()-.5)*.5,0,(rnd()-.5)*.5));
+      fwd.y=-.1+rnd()*.2;fwd.normalize();
+      const nrm=V((rnd()-.5)*.95,1,(rnd()-.5)*.95).normalize();
+      const u=Math.min(1,Math.hypot(p.x,p.z)/4.3)+(rnd()-.5)*.55;
+      L.push({p:p.clone(),fwd,nrm,s:.7+rnd()*.5,c:palette[Math.max(0,Math.min(5,Math.floor(u*6)))]});
+    }
+  }
+}
+// Charpente : plusieurs troncs fins qui s'écartent, branches presque horizontales, rameaux très fins
+function grow(p,d,len,r,dep,trunk){
+  const b={p,d,len,r,rt:r*.74,dep,trunk,S:dep>=4?7:dep>=2?5:4,bv:perp(d,len*(.1+.08*rnd()))};
+  if(trunk)b.bv.add(V(0,0,0));
+  B.push(b);
+  if(dep<=4)leaves(b);
+  if(dep===0)return;
+  const e=posAt(b,1),n=rnd()<.32?3:2;
+  for(let i=0;i<n;i++){
+    const main=i===0;
+    const ax=V(rnd()-.5,rnd()-.5,rnd()-.5).cross(d).normalize();
+    const nd=d.clone().applyAxisAngle(ax,main?.25+rnd()*.25:.6+rnd()*.5);
+    nd.y*=dep>3?.85:.7;nd.y+=dep>3?.02:-.04;nd.normalize();
+    grow(e,nd,len*(main?.84:.74),r*(main?.78:.62),dep-1,false);
+  }
+}
+for(let i=0;i<3;i++){
+  const a=i/3*6.283+rnd()*.5;
+  grow(V(Math.cos(a)*.22,0,Math.sin(a)*.22),V(Math.cos(a)*.8,1,Math.sin(a)*.8).normalize(),1.55,.21,6,true);
+}
+B[0].trunk=true;
+for(let a=0;a<6;a++){
+  const t=a/6*6.283+rnd()*.4;
+  B.push({p:V(Math.cos(t)*.2,.3,Math.sin(t)*.2),d:V(Math.cos(t)*.85,-.3,Math.sin(t)*.85).normalize(),len:.9,r:.12,rt:.06,root:true,S:4,bv:perp(V(1,0,0),.06)});
+}
+
+const uTime={value:0};
+function sway(mat,amp,inst){
+  mat.onBeforeCompile=function(s){
+    s.uniforms.uTime=uTime;
+    s.vertexShader='uniform float uTime;\n'+s.vertexShader.replace('#include <project_vertex>',
+`vec4 mvPosition=${inst?'instanceMatrix*':''}vec4(transformed,1.0);
+float h=max(mvPosition.y,0.0);
+float w=sin(uTime*.6+mvPosition.x*.2+mvPosition.z*.15)*.0016*h*h;
+mvPosition.x+=w;mvPosition.z+=w*.5;
+mvPosition.y+=sin(uTime*1.8+mvPosition.x*2.3+mvPosition.z*1.7)*${amp}*step(.1,h);
+mvPosition=modelViewMatrix*mvPosition;
+gl_Position=projectionMatrix*mvPosition;`);
+  };
+}
+function translucent(mat){
+  const o=mat.onBeforeCompile;
+  mat.onBeforeCompile=function(s){
+    if(o)o(s);
+    s.fragmentShader=s.fragmentShader
+      .replace('( gl_FrontFacing ) ? vLightFront : vLightBack','vLightFront*.8+vLightBack*.6')
+      .replace('( gl_FrontFacing ) ? vIndirectFront : vIndirectBack','vIndirectFront*.8+vIndirectBack*.6');
+  };
+}
+
+// ---------- ÉCORCE : lisse, gris-brun, fines stries et plaques de lichen ----------
+function barkTexture(){
+  const W=512,H=1024,c=document.createElement('canvas');c.width=W;c.height=H;
+  const g=c.getContext('2d');
+  g.fillStyle='#6b6058';g.fillRect(0,0,W,H);
+  for(let i=0;i<260;i++){
+    g.fillStyle='rgba('+(rnd()<.5?'45,36,32':'150,138,128')+','+(.05+rnd()*.07)+')';
+    g.beginPath();g.ellipse(rnd()*W,rnd()*H,6+rnd()*26,20+rnd()*90,0,0,6.3);g.fill();
+  }
+  for(let i=0;i<320;i++){
+    const x=rnd()*W,y=rnd()*H,l=40+rnd()*260;
+    g.strokeStyle=rnd()<.5?'rgba(30,22,18,.2)':'rgba(170,158,146,.14)';g.lineWidth=1+rnd()*2;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+(rnd()-.5)*8,y+l);g.stroke();
+  }
+  for(let i=0;i<90;i++){
+    g.fillStyle='rgba('+(rnd()<.6?'160,175,140':'190,185,170')+','+(.08+rnd()*.12)+')';
+    for(const ox of [-W,0,W]){g.beginPath();g.ellipse(rnd()*W+ox*0,rnd()*H,3+rnd()*12,2+rnd()*7,rnd()*3,0,6.3);g.fill()}
+  }
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=aniso;return t;
+}
+const barkTex=barkTexture();
+
+const P=[],Nm=[],Uv=[],Col=[],Idx=[];
+const T=V(0,0,0),a1=V(0,0,0),a2=V(0,0,0),c0=V(0,0,0),prev=V(0,0,0);
+B.forEach(b=>{
+  const {p,d,len,r,rt,bv}=b;
+  const S=b.S,R=r>.15?20:r>.07?12:r>.03?8:6;
+  const rep=Math.max(1,Math.round(6.283*r/.6));
+  const n1=V(rnd()-.5,rnd()-.5,rnd()-.5).cross(d).normalize();
+  const vo=rnd(),tint=.85+rnd()*.15,base=P.length/3;
+  let vc=0;
+  for(let j=0;j<=S;j++){
+    const t=j/S;
+    c0.copy(p).addScaledVector(d,len*t).addScaledVector(bv,Math.pow(Math.sin(Math.PI*t),2));
+    if(j>0)vc+=c0.distanceTo(prev);prev.copy(c0);
+    T.copy(d).multiplyScalar(len).addScaledVector(bv,Math.PI*Math.sin(2*Math.PI*t)).normalize();
+    a1.copy(n1).addScaledVector(T,-n1.dot(T)).normalize();a2.crossVectors(T,a1);
+    for(let k=0;k<=R;k++){
+      const th=6.2832*k/R,cs=Math.cos(th),sn=Math.sin(th);
+      let rr=r+(rt-r)*t;
+      if(b.trunk)rr*=1+.5*Math.exp(-t*len*1.8);
+      const nx=a1.x*cs+a2.x*sn,ny=a1.y*cs+a2.y*sn,nz=a1.z*cs+a2.z*sn;
+      const y=c0.y+ny*rr;
+      P.push(c0.x+nx*rr,y,c0.z+nz*rr);Nm.push(nx,ny,nz);
+      Uv.push(k/R*rep,vc/1.2+vo);
+      const ao=tint*Math.min(1,.6+Math.max(y,0)*.5);
+      Col.push(ao,ao*.98,ao*.95);
+    }
+  }
+  for(let j=0;j<S;j++)for(let k=0;k<R;k++){
+    const a=base+j*(R+1)+k,b2=a+1,c2=a+R+1,d2=c2+1;
+    Idx.push(a,b2,c2,b2,d2,c2);
+  }
+});
+const bg=new THREE.BufferGeometry();
+bg.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
+bg.setAttribute('normal',new THREE.Float32BufferAttribute(Nm,3));
+bg.setAttribute('uv',new THREE.Float32BufferAttribute(Uv,2));
+bg.setAttribute('color',new THREE.Float32BufferAttribute(Col,3));
+bg.setIndex(new THREE.Uint32BufferAttribute(Idx,1));
+const barkMat=new THREE.MeshStandardMaterial({map:barkTex,bumpMap:barkTex,bumpScale:.3,roughness:.7,metalness:0,vertexColors:true});
+sway(barkMat,'0.0',false);
+const bark=new THREE.Mesh(bg,barkMat);
+bark.castShadow=bark.receiveShadow=true;scene.add(bark);
+
+// ---------- LA FEUILLE : palmée, sept lobes pointus et dentelés ; dessinée une fois puis clonée ----------
+function leafTexture(){
+  const S=512,c=document.createElement('canvas');c.width=c.height=S;
+  const g=c.getContext('2d'),cx=256,cy=330;
+  const lobes=[[-112,118,34],[-76,150,40],[-38,182,44],[0,198,46],[38,182,44],[76,150,40],[112,118,34]];
+  const lobePath=(ang,Ll,Wl,grow)=>{
+    const a=ang*Math.PI/180,dx=Math.sin(a),dy=-Math.cos(a),px=-dy,py=dx,pts=[];
+    const N=34;
+    const w=u=>(Wl+grow)*Math.pow(Math.sin(Math.PI*Math.min(1,u*1.12)),.75)*(1+.1*(((u*11)%1)-.5)*Math.min(1,u*3));
+    for(let i=0;i<=N;i++){const u=i/N;pts.push([cx+dx*u*(Ll+grow)+px*w(u),cy+dy*u*(Ll+grow)+py*w(u)])}
+    for(let i=N;i>=0;i--){const u=i/N;pts.push([cx+dx*u*(Ll+grow)-px*w(u),cy+dy*u*(Ll+grow)-py*w(u)])}
+    g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();
+  };
+  // pétiole
+  g.strokeStyle='#f0d2b8';g.lineCap='round';g.lineWidth=9;
+  g.beginPath();g.moveTo(cx,505);g.lineTo(cx,cy+10);g.stroke();
+  // contour légèrement plus sombre, puis limbe
+  for(const [a,l,w] of lobes){lobePath(a,l,w,5);g.fillStyle='#e3a888';g.fill()}
+  g.beginPath();g.arc(cx,cy,48,0,6.3);g.fill();
+  const gr=g.createRadialGradient(cx,cy,10,cx,cy,200);
+  gr.addColorStop(0,'#fff0d4');gr.addColorStop(.6,'#fbd8b4');gr.addColorStop(1,'#f4bf98');
+  for(const [a,l,w] of lobes){lobePath(a,l,w,-2);g.fillStyle=gr;g.fill()}
+  g.beginPath();g.arc(cx,cy,44,0,6.3);g.fillStyle=gr;g.fill();
+  // nervures : une par lobe, avec des nervures latérales
+  for(const [ang,Ll] of lobes){
+    const a=ang*Math.PI/180,dx=Math.sin(a),dy=-Math.cos(a);
+    g.strokeStyle='rgba(120,50,30,.38)';g.lineWidth=6;
+    g.beginPath();g.moveTo(cx+1,cy+2);g.lineTo(cx+dx*Ll*.93+1,cy+dy*Ll*.93+2);g.stroke();
+    g.strokeStyle='rgba(255,246,232,.95)';g.lineWidth=3.4;
+    g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+dx*Ll*.93,cy+dy*Ll*.93);g.stroke();
+    for(let k=1;k<6;k++){
+      const u=k*.15,px=-dy,py=dx;
+      for(const s of [-1,1]){
+        g.strokeStyle='rgba(255,244,228,.8)';g.lineWidth=1.8;
+        g.beginPath();g.moveTo(cx+dx*Ll*u,cy+dy*Ll*u);
+        g.lineTo(cx+dx*Ll*(u+.1)+px*s*Ll*.13*(1-u),cy+dy*Ll*(u+.1)+py*s*Ll*.13*(1-u));g.stroke();
+      }
+    }
+  }
+  const tex=new THREE.CanvasTexture(c);tex.anisotropy=aniso;return tex;
+}
+const leafTex=leafTexture();
+const leafGeo=new THREE.PlaneGeometry(.5,.5,2,3).translate(0,.25,0);
+(function(){
+  const p=leafGeo.attributes.position;
+  for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);p.setZ(i,-y*y*.5+Math.abs(x)*.15)}
+  leafGeo.computeVertexNormals();
+})();
+const leafMat=new THREE.MeshLambertMaterial({map:leafTex,alphaTest:.5,side:THREE.DoubleSide,emissive:0x2a0c08,emissiveIntensity:.3});
+sway(leafMat,'0.03',true);translucent(leafMat);
+const leafDepth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,map:leafTex,alphaTest:.5});
+sway(leafDepth,'0.03',true);
+for(let i=L.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[L[i],L[j]]=[L[j],L[i]]}
+const foliage=new THREE.InstancedMesh(leafGeo,leafMat,L.length);
+foliage.castShadow=true;foliage.customDepthMaterial=leafDepth;
+const m=new THREE.Matrix4(),X=V(0,0,0),Y=V(0,0,0),Zv=V(0,0,0),pos=V(0,0,0),sv=V(1,1,1);
+const q=new THREE.Quaternion();
+L.forEach((l,i)=>{
+  Zv.copy(l.nrm);Y.copy(l.fwd).addScaledVector(Zv,-l.fwd.dot(Zv)).normalize();X.crossVectors(Y,Zv);
+  m.makeBasis(X,Y,Zv);m.scale(sv.set(l.s,l.s,l.s));m.setPosition(l.p);
+  foliage.setMatrixAt(i,m);foliage.setColorAt(i,l.c);
+});
+scene.add(foliage);
+
+const ground=new THREE.Mesh(new THREE.CircleGeometry(130,64).rotateX(-Math.PI/2),
+  new THREE.MeshLambertMaterial({color:0x6f9253}));
+ground.receiveShadow=true;scene.add(ground);
+
+// Tapis de feuilles mortes, puis feuilles qui tombent : toujours la même feuille clonée
+const plainMat=new THREE.MeshLambertMaterial({map:leafTex,alphaTest:.5,side:THREE.DoubleSide});
+translucent(plainMat);
+const NG=1100,carpet=new THREE.InstancedMesh(leafGeo,plainMat,NG);
+const qx=new THREE.Quaternion().setFromAxisAngle(V(1,0,0),-Math.PI/2);
+for(let i=0;i<NG;i++){
+  const a=rnd()*6.283,r=Math.pow(rnd(),.8)*8;
+  q.setFromAxisAngle(up,rnd()*6.283).multiply(qx);
+  const s=.55+rnd()*.5;
+  m.compose(V(Math.cos(a)*r,.02+rnd()*.04,Math.sin(a)*r),q,sv.set(s,s,s));
+  carpet.setMatrixAt(i,m);carpet.setColorAt(i,palette[Math.floor(rnd()*6)]);
+}
+carpet.receiveShadow=true;scene.add(carpet);
+
+const N=still?0:240,fall=[];
+const fMesh=new THREE.InstancedMesh(leafGeo,plainMat,Math.max(N,1));
+fMesh.count=N;
+for(let i=0;i<N;i++)fMesh.setColorAt(i,palette[Math.floor(rnd()*6)]);
+scene.add(fMesh);
+function reset(f,first){
+  const a=rnd()*6.28,r=Math.sqrt(rnd())*4.5;
+  f.x=Math.cos(a)*r;f.z=Math.sin(a)*r;f.y=first?rnd()*6:4+rnd()*2.5;
+  f.v=.28+rnd()*.3;f.ph=rnd()*6.28;f.rs=1+rnd()*2;
+}
+for(let i=0;i<N;i++){const f={};reset(f,true);fall.push(f)}
+const dm=new THREE.Object3D();
+
+let th=.6,phi=1.3,rad=15,auto=!still;
+const target=V(0,2.2,0),ptr=new Map();let pd=0;
+const cv=renderer.domElement;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,e);auto=false;if(ptr.size===2)pd=dist()});
+cv.addEventListener('pointerup',e=>ptr.delete(e.pointerId));
+cv.addEventListener('pointercancel',e=>ptr.delete(e.pointerId));
+cv.addEventListener('pointermove',e=>{
+  const o=ptr.get(e.pointerId);if(!o)return;
+  const dx=e.clientX-o.clientX,dy=e.clientY-o.clientY;ptr.set(e.pointerId,e);
+  if(ptr.size===1){th-=dx*.006;phi=Math.min(1.55,Math.max(.25,phi-dy*.005))}
+  else if(ptr.size===2){const d=dist();rad=Math.min(40,Math.max(3,rad*pd/d));pd=d}
+});
+function dist(){const [a,b]=[...ptr.values()];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1}
+cv.addEventListener('wheel',e=>{e.preventDefault();rad=Math.min(40,Math.max(3,rad*(1+e.deltaY*.001)))},{passive:false});
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'){th+=.1;auto=false}
+  if(e.key==='ArrowRight'){th-=.1;auto=false}
+  if(e.key==='ArrowUp'){phi=Math.max(.25,phi-.06)}
+  if(e.key==='ArrowDown'){phi=Math.min(1.55,phi+.06)}
+});
+function resize(){
+  const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);resize();
+cv.addEventListener('webglcontextlost',e=>e.preventDefault());
+cv.addEventListener('webglcontextrestored',()=>location.reload());
+renderer.shadowMap.needsUpdate=true;
+
+let fr=-30,acc=0,last=performance.now(),lvl=0;
+const clock=new THREE.Clock();
+function frame(){
+  const now=performance.now();acc+=now-last;last=now;
+  if(++fr===45){ // qualité adaptative : on n'allège que si la machine peine
+    if(acc/fr>34&&lvl<3){
+      lvl++;
+      foliage.count=Math.floor(L.length*[1,.6,.38,.22][lvl]);
+      if(lvl===1){renderer.setPixelRatio(1);resize();}
+      if(lvl>=2)fMesh.count=Math.min(fMesh.count,60);
+    }
+    fr=0;acc=0;
+  }
+  const t=clock.getElapsedTime();
+  if(!still)uTime.value=t;
+  if(auto)th+=.0015;
+  const aspect=camera.aspect<1?1/camera.aspect*.8:1,R=rad*Math.max(1,aspect);
+  camera.position.set(target.x+R*Math.sin(phi)*Math.sin(th),target.y+R*Math.cos(phi),target.z+R*Math.sin(phi)*Math.cos(th));
+  camera.lookAt(target);
+  for(let i=0;i<N;i++){
+    const f=fall[i];
+    f.y-=f.v*.016;f.x+=Math.sin(t*.8+f.ph)*.006+.004;f.z+=Math.cos(t*.6+f.ph)*.004;
+    if(f.y<.05)reset(f,false);
+    dm.position.set(f.x,f.y,f.z);dm.rotation.set(t*f.rs+f.ph,f.ph*2,t*f.rs*.7);dm.scale.setScalar(.8);
+    dm.updateMatrix();fMesh.setMatrixAt(i,dm.matrix);
+  }
+  if(N)fMesh.instanceMatrix.needsUpdate=true;
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+frame();
+})();
+</script>
+</body>
+</html>
