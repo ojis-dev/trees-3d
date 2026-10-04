@@ -1,17 +1,329 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbres 3D</title>
-<style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#e9efe6;color:#27352a;font-family:system-ui,sans-serif}
-main{max-width:34rem;padding:2rem}
-h1{font-weight:600;margin:0 0 .3rem}p{margin:0 0 1.4rem;opacity:.75}
-a{display:block;padding:.85rem 1.1rem;margin:.5rem 0;border-radius:.7rem;background:#fff;color:inherit;text-decoration:none;box-shadow:0 1px 3px #0002}
-a:hover{background:#f6faf3}
-</style></head><body><main>
-<h1>Arbres 3D</h1><p>Cinq arbres générés entièrement par du code. Glisser pour tourner, molette pour zoomer.</p>
-<a href="arbre.html">🌳 Arbre à feuilles larges</a>
-<a href="epicea.html">🌲 Épicéa</a>
-<a href="saule.html">🌿 Saule pleureur</a>
-<a href="cerisier.html">🌸 Cerisier en fleurs</a>
-<a href="erable.html">🍁 Érable du Japon</a>
-</main></body></html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Le Jardin des Arbres : un parc entièrement généré par le code — 17 essences, du chêne centenaire au cerisier en fleurs.">
+<meta name="theme-color" content="#cfe2ee">
+<title>Le Jardin des Arbres — parc 3D généré par le code</title>
+<link rel="stylesheet" href="arbres.css">
+</head>
+<body class="page-jardin">
+
+<header class="entete">
+  <h1>Le Jardin des Arbres</h1>
+  <p>Dix-sept essences, un parc entier — tout est dessiné par le code : écorces, feuilles, fleurs, sol et ciel.</p>
+</header>
+
+<div class="barre-outils" id="outils" role="toolbar" aria-label="Réglages de la scène"></div>
+
+<aside class="panneau panneau-essences" id="panneau-essences" aria-label="Essences du jardin">
+  <h2>Essences du jardin</h2>
+  <ul id="liste-essences"></ul>
+</aside>
+
+<section class="panneau panneau-fiche" id="fiche" hidden aria-live="polite">
+  <button class="fermer" id="fermer-fiche" aria-label="Fermer la fiche">✕</button>
+  <div class="fiche-titre">
+    <span class="emoji" id="fiche-emoji"></span>
+    <div>
+      <h2 id="fiche-nom"></h2>
+      <p class="latin" id="fiche-latin"></p>
+    </div>
+  </div>
+  <p class="famille" id="fiche-famille"></p>
+  <p id="fiche-description"></p>
+  <dl class="mesures" id="fiche-mesures"></dl>
+  <div class="fiche-actions">
+    <button id="fiche-voir" class="bouton-action">Voir en grand</button>
+    <button id="fiche-espacer" class="bouton-action secondaire">Vue du jardin</button>
+  </div>
+</section>
+
+<div class="infobulle" id="infobulle" hidden></div>
+
+<div class="coin" id="compteur" aria-live="polite"></div>
+
+<div class="aide disparait" id="aide">
+  <span>🖱️ Glisser : tourner</span><span>🔍 Molette / pincer : zoomer</span><span>👆 Cliquer un arbre : sa fiche</span><span>⌨️ Flèches : pivoter</span><span>▶️ V : visite guidée</span>
+</div>
+
+<div class="chargement" id="chargement">
+  <div class="chargement-boite">
+    <h2 id="chargement-titre">Le jardin pousse…</h2>
+    <p id="chargement-detail">Préparation de la terre</p>
+    <div class="jauge"><div class="jauge-remplie" id="jauge"></div></div>
+    <p class="pourcentage" id="pourcentage">0 %</p>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script src="arbres-core.js"></script>
+<script src="arbres-ui.js"></script>
+<script src="jardin.js"></script>
+<script>
+(function () {
+  'use strict';
+  const A = window.ARBRES, U = window.ARBRES_UI, J = window.JARDIN;
+
+  /* ------------------------------------------------------------------ état */
+  const etat = {
+    ambiance: 'jour',
+    saison: 'ete',
+    qualite: .75,
+    vent: true,
+    oiseaux: false,
+    visite: -1,
+    selection: null,
+    construit: false
+  };
+
+  /* ---------------------------------------------------------------- moteur */
+  const moteur = U.creerMoteur({
+    ambiance: etat.ambiance, saison: etat.saison, qualite: etat.qualite,
+    cible: [0, 4.5, -2], distance: 46, azimut: .9, inclinaison: 1.22,
+    tailleSol: 340, touffes: 1500, cailloux: 200, rayonDetail: 46,
+    etendueOmbres: 30, libelleAria: 'Jardin 3D', seed: 20261004,
+    vitesseAuto: .00028
+  });
+  const arbre = { decor: null, arbres: [], total: 0 };
+
+  const chargement = document.getElementById('chargement');
+  const jauge = document.getElementById('jauge');
+  const pourcentage = document.getElementById('pourcentage');
+  const detail = document.getElementById('chargement-detail');
+  const compteur = document.getElementById('compteur');
+
+  function majCompteur() {
+    let tris = 0, instances = 0, arbres = 0;
+    moteur.arbres.traverse(o => {
+      if (o.isMesh && o.geometry && o.geometry.index) tris += o.geometry.index.count / 3 * (o.isInstancedMesh ? o.count : 1);
+      if (o.isInstancedMesh) instances += o.count;
+      if (o.userData.especeId) arbres++;
+    });
+    let trisDecor = 0;
+    if (arbre.decor) arbre.decor.traverse(o => { if (o.isMesh && o.geometry.index) trisDecor += o.geometry.index.count / 3 * (o.isInstancedMesh ? o.count : 1); });
+    compteur.innerHTML = '<b>' + arbres + '</b> sujets · <b>' + ((tris + trisDecor) / 1000 | 0) + ' k</b> facettes · <b>' +
+      (instances / 1000).toFixed(1) + ' k</b> feuilles';
+  }
+
+  function planterTout(apres) {
+    chargement.hidden = false;
+    const t0 = performance.now();
+    const construit = arbre.construit = J.construire(moteur, {
+      qualite: etat.qualite,
+      detail: etat.qualite > .8 ? 1.3 : etat.qualite > .55 ? 1 : .7,
+      onProgres: (p, i, n, dernier) => {
+        jauge.style.width = (p * 100).toFixed(1) + '%';
+        pourcentage.textContent = Math.round(p * 100) + ' %';
+        if (dernier) {
+          const esp = A.ESPECES[dernier.userData.especeId];
+          detail.textContent = 'Plantation : ' + esp.emoji + ' ' + esp.nom + ' (' + i + '/' + n + ')';
+        }
+      },
+      onFini: (arbres) => {
+        arbre.arbres = arbres;
+        arbre.decor = construit.decor;
+        arbre.plan = construit.plan;
+        jauge.style.width = '100%';
+        pourcentage.textContent = '100 %';
+        detail.textContent = 'Le jardin est prêt — ' + (arbres.length) + ' sujets plantés en ' +
+          ((performance.now() - t0) / 1000).toFixed(1) + ' s';
+        setTimeout(() => { chargement.hidden = true; }, 420);
+        majCompteur();
+        remplirListe();
+        if (window.__jardinPret) window.__jardinPret(arbres);
+        if (apres) setTimeout(apres, 450);
+      }
+    });
+  }
+
+  /* --------------------------------------------------------------- outils */
+  const outils = U.creerBarre();
+  document.getElementById('outils').replaceWith(outils.element);
+  outils.groupe('Ambiance', 'ambiance', [
+    { v: 'aube', nom: 'Aube', e: '🌅' }, { v: 'jour', nom: 'Jour', e: '☀️' },
+    { v: 'coucher', nom: 'Coucher', e: '🌇' }, { v: 'nuit', nom: 'Nuit', e: '🌙' }
+  ], etat.ambiance, v => { etat.ambiance = v; moteur.setAmbiance(v); });
+
+  outils.groupe('Saison', 'saison', [
+    { v: 'printemps', nom: 'Printemps', e: '🌸' }, { v: 'ete', nom: 'Été', e: '🌿' },
+    { v: 'automne', nom: 'Automne', e: '🍂' }, { v: 'hiver', nom: 'Hiver', e: '❄️' }
+  ], etat.saison, v => { etat.saison = v; reconstruire(); });
+
+  outils.groupe('Détail', 'qualite', [
+    { v: 'rapide', nom: 'Rapide', e: '⚡' }, { v: 'equilibre', nom: 'Équilibré', e: '🌿' },
+    { v: 'maximal', nom: 'Maximal', e: '💎' }
+  ], 'equilibre', v => {
+    etat.qualite = v === 'rapide' ? .45 : v === 'maximal' ? 1.25 : .75;
+    reconstruire();
+  });
+
+  outils.groupe('Vie', 'vie', [
+    { v: 'vent', nom: 'Vent', e: '🍃' }, { v: 'oiseaux', nom: 'Oiseaux', e: '🐦' }
+  ], null, v => {
+    if (v === 'vent') {
+      etat.vent = !etat.vent;
+      moteur.vitesseVent = etat.vent ? 1 : 0;
+    } else {
+      etat.oiseaux = !etat.oiseaux;
+      moteur.oiseaux.visible = etat.oiseaux;
+    }
+  });
+
+  outils.groupe('Visite', 'visite', [
+    { v: 'tour', nom: 'Visite guidée', e: '🎬' }, { v: 'repos', nom: 'Arrêter', e: '⏹' }
+  ], null, v => {
+    if (v === 'tour') demarrerVisite(); else arreterVisite();
+  });
+
+  /* ------------------------------------------------------------- fiche UI */
+  const fiche = document.getElementById('fiche');
+  const bulle = document.getElementById('infobulle');
+  const liste = document.getElementById('liste-essences');
+
+  function montrerFiche(g, depuisListe) {
+    const esp = A.ESPECES[g.userData.especeId];
+    etat.selection = g;
+    document.getElementById('fiche-emoji').textContent = esp.emoji;
+    document.getElementById('fiche-nom').textContent = esp.nom;
+    document.getElementById('fiche-latin').textContent = esp.latin;
+    document.getElementById('fiche-famille').textContent = esp.famille;
+    document.getElementById('fiche-description').textContent = (g.userData.note || '') ? g.userData.note + '. ' + esp.description : esp.description;
+    const portee = (esp.largeur * .5 * (g.scale.x || 1) * 2).toFixed(1);
+    document.getElementById('fiche-mesures').innerHTML =
+      '<div><dt>Hauteur</dt><dd>' + (esp.hauteur * (g.scale.x || 1)).toFixed(1) + ' m</dd></div>' +
+      '<div><dt>Envergure</dt><dd>' + portee + ' m</dd></div>' +
+      '<div><dt>Feuillage</dt><dd>' + (esp.feuille ? (esp.feuille.persistant ? 'persistant' : 'caduc') : 'persistant') + '</dd></div>' +
+      '<div><dt>Exemplaires</dt><dd>' + moteur.especesPresentes.get(g.userData.especeId) + '</dd></div>';
+    const btn = document.getElementById('fiche-voir');
+    btn.onclick = () => { location.href = 'espece.html?espece=' + g.userData.especeId; };
+    document.getElementById('fiche-espacer').onclick = () => {
+      moteur.controles.volerVers(new THREE.Vector3(0, 4.5, -2), 46, .9, 1.22);
+      fiche.hidden = true; etat.selection = null;
+    };
+    fiche.hidden = false;
+    if (!depuisListe) moteur.cadrer(g, null, { marge: 1.9, inclinaison: 1.15 });
+  }
+
+  function remplirListe() {
+    const vus = J.essences();
+    liste.innerHTML = '';
+    for (const id of vus) {
+      const esp = A.ESPECES[id];
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.innerHTML = '<span class="emoji">' + esp.emoji + '</span><span class="nom">' + esp.nom + '</span>' +
+        '<span class="badge">' + moteur.especesPresentes.get(id) + '</span>';
+      b.title = esp.description;
+      b.onclick = () => {
+        // on cadre un exemplaire de cette essence
+        const cible = arbre.arbres.find(g => g.userData.especeId === id);
+        if (cible) {
+          montrerFiche(cible, true);
+          moteur.cadrer(cible, null, { marge: 1.8, inclinaison: 1.16 });
+        }
+      };
+      li.appendChild(b);
+      liste.appendChild(li);
+    }
+    document.getElementById('fermer-fiche').onclick = () => { fiche.hidden = true; etat.selection = null; };
+  }
+
+  /* ------------------------------------------------- sélection au pointeur */
+  const cv = moteur.renderer.domElement;
+  let survol = null, dernierSurvol = 0;
+  cv.addEventListener('pointermove', e => {
+    const maintenant = performance.now();
+    if (maintenant - dernierSurvol < 70 || e.pointerType === 'touch') return;
+    dernierSurvol = maintenant;
+    const t = J.arbreSousPointeur(moteur, e.clientX, e.clientY);
+    if (t !== survol) {
+      survol = t;
+      cv.style.cursor = t ? 'pointer' : 'grab';
+    }
+    if (survol) {
+      const esp = A.ESPECES[survol.userData.especeId];
+      bulle.hidden = false;
+      bulle.innerHTML = '<b>' + esp.emoji + ' ' + esp.nom + '</b><i>' + esp.latin + '</i>';
+      bulle.style.left = Math.min(e.clientX + 16, innerWidth - 240) + 'px';
+      bulle.style.top = (e.clientY - 12) + 'px';
+    } else bulle.hidden = true;
+  });
+  cv.addEventListener('pointerleave', () => { bulle.hidden = true; survol = null; });
+  let bouge = 0;
+  cv.addEventListener('pointerdown', () => { bouge = performance.now(); });
+  cv.addEventListener('pointerup', e => {
+    if (performance.now() - bouge > 260) return;         // c'était un glissement
+    const t = J.arbreSousPointeur(moteur, e.clientX, e.clientY);
+    if (t) { arreterVisite(); montrerFiche(t, false); }
+    else { fiche.hidden = true; etat.selection = null; }
+  });
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape') { fiche.hidden = true; etat.selection = null; arreterVisite(); }
+    if (e.key === 'v' || e.key === 'V') demarrerVisite();
+  });
+
+  /* ------------------------------------------------------- visite guidée */
+  let minuteurVisite = null;
+  function arreterVisite() {
+    etat.visite = -1;
+    if (minuteurVisite) { clearTimeout(minuteurVisite); minuteurVisite = null; }
+  }
+  function demarrerVisite() {
+    const vedettes = arbre.arbres.filter(g => g.userData.vedette);
+    if (!vedettes.length) return;
+    arreterVisite();
+    const suivant = () => {
+      etat.visite = (etat.visite + 1) % vedettes.length;
+      const g = vedettes[etat.visite];
+      montrerFiche(g, true);
+      moteur.cadrer(g, null, { marge: 1.75, inclinaison: 1.18, azimut: undefined });
+      minuteurVisite = setTimeout(suivant, 9000);
+    };
+    suivant();
+  }
+
+  /* -------------------------------------------------------- reconstruction */
+  function reconstruire() {
+    arreterVisite();
+    fiche.hidden = true;
+    // on vide les arbres et le décor précédents (textures partagées conservées)
+    for (const g of arbre.arbres) {
+      g.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry && !o.geometry.__partagee) o.geometry.dispose();
+          if (o.material && !o.material.__partage) o.material.dispose();
+        }
+      });
+      moteur.arbres.remove(g);
+    }
+    if (arbre.decor) {
+      arbre.decor.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry && !o.geometry.__partagee) o.geometry.dispose();
+          if (o.material && !o.material.__partage) o.material.dispose();
+        }
+      });
+      moteur.scene.remove(arbre.decor);
+    }
+    arbre.arbres = [];
+    planterTout();
+  }
+
+  /* ------------------------------------------------------------ démarrage */
+  planterTout();
+
+  // l'aide disparaît d'elle-même, et dès la première interaction
+  const aide = document.getElementById('aide');
+  setTimeout(() => aide.classList.add('disparait'), 400);
+  setTimeout(() => aide.classList.add('disparait'), 10000);
+  moteur.renderer.domElement.addEventListener('pointerdown', () => aide.classList.add('disparait'), { once: false });
+  window.addEventListener('keydown', () => aide.classList.add('disparait'));
+
+  // l'état exposé pour les tests
+  window.__jardin = { etat, moteur, arbre, reconstruire };
+})();
+</script>
+</body>
+</html>

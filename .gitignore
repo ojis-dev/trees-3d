@@ -1,0 +1,7 @@
+# sorties de test et fichiers volumineux
+test/out/
+*.log
+node_modules/
+
+# python
+__pycache__/

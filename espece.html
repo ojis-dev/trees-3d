@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Fiche et modèle 3D d’une essence d’arbre générée par le code.">
+<meta name="theme-color" content="#cfe2ee">
+<title>Essence — Le Jardin des Arbres</title>
+<link rel="stylesheet" href="arbres.css">
+</head>
+<body class="page-espece">
+
+<div class="entete">
+  <h1 id="titre-espece">Essence</h1>
+  <p id="sous-titre">Modèle 3D généré par le code</p>
+</div>
+
+<div class="barre-outils" id="outils" role="toolbar" aria-label="Réglages de la scène"></div>
+
+<div class="pied">
+  <span id="pied-emoji" style="font-size:1.5rem"></span>
+  <p id="pied-texte">Modèle unique construit à la volée.</p>
+  <div class="galerie-liens">
+    <a class="lien" href="galerie.html">Toutes les essences</a>
+    <a class="lien" href="index.html">Le jardin</a>
+    <button class="lien" id="rejouer" type="button">Autre sujet</button>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script src="arbres-core.js"></script>
+<script src="arbres-ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const A = window.ARBRES, U = window.ARBRES_UI;
+  const params = new URLSearchParams(location.search);
+  const id = params.get('espece') || window.ESPECE_PAR_DEFAUT || 'chene';
+  const S = A.ESPECES[id] || A.ESPECES.chene;
+  const saison = params.get('saison') || 'ete';
+  const ambiance = params.get('ambiance') || 'jour';
+
+  document.title = S.nom + ' — ' + S.latin;
+  document.getElementById('titre-espece').textContent = S.emoji + '  ' + S.nom;
+  document.getElementById('sous-titre').textContent = S.latin + ' · ' + S.famille;
+  document.getElementById('pied-emoji').textContent = S.emoji;
+  document.getElementById('pied-texte').textContent = S.description;
+
+  const moteur = U.creerMoteur({
+    ambiance: ambiance, saison: saison, qualite: 1.1,
+    cible: [0, S.hauteur * .5, 0], distance: S.hauteur * 2.3,
+    azimut: .9, inclinaison: 1.24, tailleSol: 140,
+    touffes: 420, cailloux: 90, rayonDetail: 22, etendueOmbres: 16,
+    libelleAria: S.nom + ' en 3D', seed: 4242 + S.id.length, vitesseAuto: .0007
+  });
+
+  const outils = U.creerBarre();
+  document.getElementById('outils').replaceWith(outils.element);
+  outils.groupe('Ambiance', 'ambiance', [
+    { v: 'aube', nom: 'Aube', e: '🌅' }, { v: 'jour', nom: 'Jour', e: '☀️' },
+    { v: 'coucher', nom: 'Coucher', e: '🌇' }, { v: 'nuit', nom: 'Nuit', e: '🌙' }
+  ], ambiance, v => moteur.setAmbiance(v));
+  outils.groupe('Saison', 'saison', [
+    { v: 'printemps', nom: 'Printemps', e: '🌸' }, { v: 'ete', nom: 'Été', e: '🌿' },
+    { v: 'automne', nom: 'Automne', e: '🍂' }, { v: 'hiver', nom: 'Hiver', e: '❄️' }
+  ], saison, v => planter(v, graine));
+  outils.groupe('Sujet', 'sujet', [
+    { v: 'nouveau', nom: 'Nouvelle graine', e: '🎲' }
+  ], null, () => planter(saisonCourante, Math.floor(Math.random() * 1e6)));
+
+  let graine = Math.floor(Math.random() * 1e6);
+  let saisonCourante = saison;
+  let sujet = null;
+
+  function planter(s, gr) {
+    saisonCourante = s; graine = gr === undefined ? graine : gr;
+    if (sujet) {
+      sujet.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) o.material.dispose();
+        }
+      });
+      moteur.arbres.remove(sujet);
+    }
+    sujet = moteur.planter(id, { x: 0, z: 0, seed: graine, saison: s, qualite: 1.15, rotation: .4 });
+    sujet.userData.aleatoire = true;
+    moteur.controles.volerVers(new THREE.Vector3(0, S.hauteur * .48, 0), S.hauteur * (S.largeur > S.hauteur ? 2.1 : 2.35), .9, 1.24);
+  }
+  planter(saisonCourante);
+
+  const aide = document.createElement('div');
+  aide.className = 'aide';
+  aide.innerHTML = '<span>🖱️ Glisser : tourner</span><span>🔍 Molette : zoomer</span><span>⌨️ Flèches : pivoter</span>';
+  document.body.appendChild(aide);
+  setTimeout(() => aide.classList.add('disparait'), 9000);
+  window.__espece = { moteur, id };
+})();
+</script>
+</body>
+</html>

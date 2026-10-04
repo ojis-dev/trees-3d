@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Catalogue des essences d’arbres générées par le code : chêne, hêtre, bouleau, saule, érable du Japon, cerisier, olivier, épicéa, pin, cyprès, lilas, hortensia, fougère, graminées.">
+<meta name="theme-color" content="#cfe2ee">
+<title>Galerie des essences — Le Jardin des Arbres</title>
+<link rel="stylesheet" href="arbres.css">
+</head>
+<body class="page-galerie">
+
+<div class="entete">
+  <h1>Galerie des essences</h1>
+  <p>Dix-sept végétaux, tous dessinés par le code : aucune image, aucun modèle téléchargé. Choisissez un sujet pour l’examiner en 3D.</p>
+</div>
+
+<div class="barre-outils" id="outils" role="toolbar" aria-label="Réglages de la vue"></div>
+
+<main class="mise-en-page">
+  <div class="vue-3d" id="vue-3d"></div>
+  <div class="filtres" id="filtres"></div>
+  <div class="grille" id="grille"></div>
+</main>
+
+<script src="three.min.js"></script>
+<script src="arbres-core.js"></script>
+<script src="arbres-ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const A = window.ARBRES, U = window.ARBRES_UI;
+  const especes = A.liste();
+  const params = new URLSearchParams(location.search);
+  let courant = params.get('espece') || 'chene';
+  let saison = 'ete', ambiance = 'jour';
+
+  const moteur = U.creerMoteur({
+    ambiance: ambiance, saison: saison, qualite: 1.05,
+    conteneur: document.getElementById('vue-3d'),
+    cible: [0, 4, 0], distance: 20, azimut: .8, inclinaison: 1.26,
+    tailleSol: 150, touffes: 500, cailloux: 110, rayonDetail: 24, etendueOmbres: 18,
+    auto: true, vitesseAuto: .0011, libelleAria: 'Aperçu 3D', seed: 1234
+  });
+
+  const outils = U.creerBarre();
+  document.getElementById('outils').replaceWith(outils.element);
+  outils.groupe('Ambiance', 'ambiance', [
+    { v: 'aube', nom: 'Aube', e: '🌅' }, { v: 'jour', nom: 'Jour', e: '☀️' },
+    { v: 'coucher', nom: 'Coucher', e: '🌇' }, { v: 'nuit', nom: 'Nuit', e: '🌙' }
+  ], 'jour', v => { ambiance = v; moteur.setAmbiance(v); });
+  outils.groupe('Saison', 'saison', [
+    { v: 'printemps', nom: 'Printemps', e: '🌸' }, { v: 'ete', nom: 'Été', e: '🌿' },
+    { v: 'automne', nom: 'Automne', e: '🍂' }, { v: 'hiver', nom: 'Hiver', e: '❄️' }
+  ], 'ete', v => { saison = v; montrer(courant); });
+  outils.groupe('Rotation', 'rotation', [
+    { v: 'marche', nom: 'Rotation auto', e: '🔄' }, { v: 'pause', nom: 'Pause', e: '⏸️' }
+  ], 'marche', v => { moteur.controles.auto = (v === 'marche'); });
+
+  const grille = document.getElementById('grille');
+  const filtres = document.getElementById('filtres');
+  const familles = [...new Set(especes.map(e => e.famille))];
+  let filtre = 'Toutes';
+  let sujet = null;
+
+  function montrer(id) {
+    courant = id;
+    if (sujet) {
+      sujet.traverse(o => {
+        if (o.isMesh) {
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) o.material.dispose();
+        }
+      });
+      moteur.arbres.remove(sujet);
+    }
+    const S = A.ESPECES[id];
+    sujet = moteur.planter(id, { x: 0, z: 0, seed: 909 + id.length * 37, saison: saison, qualite: 1.1, rotation: .5 });
+    moteur.controles.volerVers(new THREE.Vector3(0, S.hauteur * .45, 0),
+      S.hauteur * (S.forme === 'rosette' || S.forme === 'volume' ? 3.4 : 2.15), null, 1.25);
+    history.replaceState(null, '', '?espece=' + id);
+    document.querySelectorAll('.carte-espece').forEach(c => c.classList.toggle('actif', c.dataset.id === id));
+  }
+
+  function dessiner() {
+    grille.innerHTML = '';
+    for (const S of especes) {
+      if (filtre !== 'Toutes' && S.famille !== filtre) continue;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'carte-espece' + (S.id === courant ? ' actif' : '');
+      b.dataset.id = S.id;
+      b.innerHTML =
+        '<h3><span>' + S.emoji + '</span>' + S.nom + '</h3>' +
+        '<p class="latin">' + S.latin + '</p>' +
+        '<p>' + S.description + '</p>' +
+        '<span class="puce">' + S.famille + '</span>';
+      b.onclick = () => montrer(S.id);
+      grille.appendChild(b);
+    }
+  }
+
+  familles.unshift('Toutes');
+  for (const f of familles) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bouton-outil' + (f === 'Toutes' ? ' actif' : '');
+    b.textContent = f;
+    b.onclick = () => {
+      filtre = f;
+      filtres.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
+      b.classList.add('actif');
+      dessiner();
+    };
+    filtres.appendChild(b);
+  }
+
+  dessiner();
+  montrer(courant);
+  window.__galerie = { moteur, montrer };
+})();
+</script>
+</body>
+</html>
