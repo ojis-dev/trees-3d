@@ -11,8 +11,21 @@ fonctionne hors connexion, à partir de `three.js` posé à côté des fichiers.
 - **La galerie** — `galerie.html` : les 17 essences présentées une à une, dans un aperçu 3D.
 - **Les fiches** — `espece.html?espece=chene` : un sujet unique, examinable sous toutes les
   coutures, avec changement de graine, de saison et d’ambiance.
+- **Les modèles d’origine** — `arbre.html`, `cerisier.html`, `epicea.html`, `erable.html`,
+  `saule.html` : les cinq scènes d’origine du dépôt, **conservées telles quelles** et reliées
+  depuis le jardin et la galerie.
 
 ![Plan du jardin](docs/plan-jardin.png)
+
+## Aperçu
+
+| Le jardin, été, plein jour | Chêne à l’automne, au couchant |
+|---|---|
+| ![Le jardin](docs/captures/jardin-ete.png) | ![Chêne d’automne](docs/captures/fiche-chene-automne.png) |
+
+| Cerisier au printemps | Saule pleureur |
+|---|---|
+| ![Cerisier](docs/captures/fiche-cerisier-printemps.png) | ![Saule](docs/captures/fiche-saule-ete.png) |
 
 ---
 
@@ -54,8 +67,14 @@ fonctionne hors connexion, à partir de `three.js` posé à côté des fichiers.
   jonché de feuilles en hiver.
 - **Ambiances** — quatre ciels dessinés par shader (aube, plein jour, coucher, nuit étoilée) ; le
   soleil, la brume, l’exposition et la couleur de l’eau suivent.
+- **Les pieds sur terre** — chaque sujet est posé à la hauteur exacte du terrain (la même
+  fonction sert à déformer le sol et à planter), et une ombre douce de contact l’ancre au sol
+  même quand la carte d’ombres est grossière.
 - **Détail adaptatif** — la construction se fait par paliers (le jardin « pousse » sous les yeux) et
   le niveau de détail décroît avec la distance : sujet héros, moyen, fond, lisière.
+- **Icônes vectorielles maison** — chaque pictogramme de l’interface (essences, saisons, ambiances,
+  commandes) est un tracé SVG écrit dans `arbres-ui.js` : aucun émoji, donc aucune police exotique
+  requise et un rendu identique sur tous les systèmes.
 
 ## Structure du dépôt
 
@@ -70,6 +89,8 @@ jardin.js         Plan de plantation et décor du jardin
 arbres.css        Habillage
 three.min.js      three.js r137 (local, aucune dépendance réseau)
 test/             Harnais de test hors navigateur (voir « Vérifier »)
+test/icones.html  Planche de contrôle des icônes vectorielles
+test/navigateur/  Captures dans un vrai Chromium (WebGL) : test/navigateur/captures.js
 docs/             Plan du jardin et documents
 ```
 
@@ -85,10 +106,11 @@ docs/             Plan du jardin et documents
 Le dépôt contient un harnais de test qui construit tout hors navigateur (faux DOM, faux WebGL) :
 
 ```bash
-node test/smoke.js     # catalogue, 17 essences, jardin complet, ambiances, interactions
-node test/pages.js     # exécute le script de chaque page HTML
-node test/plan.py      # redessine le plan du jardin (docs/plan-jardin.png)
-node test/harness.js && python3 test/render.py   # rendu logiciel de contrôle (sans navigateur)
+node test/smoke.js                     # catalogue, 17 essences, jardin complet, ambiances, interactions
+node test/pages.js                     # exécute le script de chaque page et vérifie sa scène
+node test/plan.py                      # redessine le plan du jardin (docs/plan-jardin.png)
+node test/harness.js chêne saule       # exporte des maillages …
+python3 test/render.py chêne saule     # … puis les met en images (rendu logiciel maison)
 ```
 
 `test/render.py` est un petit moteur de rendu logiciel : il découpe les textures procédurales,

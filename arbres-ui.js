@@ -18,19 +18,74 @@ window.ARBRES_UI = (function () {
   const clamp = A.clamp, lerp = A.lerp;
 
   /* ===========================================================================
+     0 bis. ICÔNES VECTORIELLES
+     ---------------------------------------------------------------------------
+     Aucune police d'émoji n'est requise : chaque icône est un tracé SVG écrit
+     ici même, à la couleur du texte (currentColor). Le rendu est donc identique
+     sur tous les systèmes, et rien ne dépend du réseau.
+     ======================================================================== */
+  const ICONES = {
+    arbre: '<circle cx="12" cy="9" r="6"/><circle cx="8.4" cy="12.4" r="3.6"/><circle cx="15.6" cy="12.4" r="3.6"/><rect x="10.9" y="13" width="2.2" height="8" rx="1.1"/>',
+    arbreOvale: '<ellipse cx="12" cy="9.6" rx="5.4" ry="6.6"/><rect x="10.9" y="14.8" width="2.2" height="6.2" rx="1.1"/><path d="M8.4 21h7.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    bouleau: '<ellipse cx="12" cy="8.8" rx="4.1" ry="5.8"/><rect x="11.2" y="13.4" width="1.6" height="7.6" rx=".8"/><rect x="9.2" y="15.6" width="2.2" height="1" rx=".5"/><rect x="12.6" y="17.8" width="2.2" height="1" rx=".5"/>',
+    erable: '<path d="M12 2.6l2 3.2 3.8-1-1 3.5 3.5 2.2-3.9 1.5 1.2 3.8-3.7-2.1-1.9 4.4-1.9-4.4-3.7 2.1 1.2-3.8-3.9-1.5 3.5-2.2-1-3.5 3.8 1z"/><rect x="11.2" y="17.4" width="1.6" height="4.2" rx=".8"/>',
+    feuille: '<path d="M12 2.6c4.1 3 6.2 6.5 6.2 10.1 0 3.6-2.8 6.3-6.2 6.3V2.6z"/><path d="M12 2.6c-4.1 3-6.2 6.5-6.2 10.1 0 3.6 2.8 6.3 6.2 6.3V2.6z" opacity=".62"/><rect x="11.2" y="18.4" width="1.6" height="3.2" rx=".8"/>',
+    fleur: '<circle cx="12" cy="7.2" r="3.2"/><circle cx="16.6" cy="10.5" r="3.2"/><circle cx="14.8" cy="15.8" r="3.2"/><circle cx="9.2" cy="15.8" r="3.2"/><circle cx="7.4" cy="10.5" r="3.2"/><circle cx="12" cy="11.5" r="2" opacity=".45"/>',
+    grappe: '<circle cx="12" cy="3.4" r="1.8"/><circle cx="9.9" cy="7.2" r="1.8"/><circle cx="14.1" cy="7.2" r="1.8"/><circle cx="12" cy="7.2" r="1.8"/><circle cx="8.2" cy="11.1" r="1.8"/><circle cx="11.1" cy="11.1" r="1.8"/><circle cx="14.9" cy="11.1" r="1.8"/><circle cx="10" cy="15" r="1.8"/><circle cx="14" cy="15" r="1.8"/><circle cx="12" cy="18.9" r="1.8"/><path d="M12 21v1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+    ombelle: '<circle cx="12" cy="12" r="9.2" opacity=".22"/><circle cx="12" cy="6.6" r="2.3"/><circle cx="17.4" cy="10.4" r="2.3"/><circle cx="15.3" cy="16.6" r="2.3"/><circle cx="8.7" cy="16.6" r="2.3"/><circle cx="6.6" cy="10.4" r="2.3"/><circle cx="12" cy="12" r="2.5" opacity=".5"/>',
+    pomme: '<path d="M12 8.5c1.2-1 2.4-1.5 3.5-1.5 2.7 0 4.7 2.4 4.7 5.6 0 3.9-2.8 7.4-5.3 7.4-.9 0-1.7-.5-2.9-.5s-2 .5-2.9.5C6.6 20 3.8 16.5 3.8 12.6 3.8 9.4 5.8 7 8.5 7c1.1 0 2.3.5 3.5 1.5z"/><path d="M12 7.4c0-2 1.3-3.5 3.2-3.8.1 2-1.3 3.5-3.2 3.8z"/>',
+    olive: '<path d="M3 14.4C7.6 13.4 11.4 10.8 14.2 6.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="7.2" cy="17" r="2.7"/><circle cx="11.4" cy="13.6" r="2.7"/><circle cx="15.2" cy="9.4" r="2.7"/><ellipse cx="18.8" cy="4.6" rx="1.4" ry="2.6" transform="rotate(38 18.8 4.6)"/>',
+    saule: '<rect x="11.2" y="4" width="1.6" height="18" rx=".8"/><ellipse cx="12" cy="6.6" rx="6.4" ry="4.4"/><path d="M6.2 8.4c-.4 4-.6 7.4-.4 10.6M8.6 9.6c-.3 3.6-.4 6.6-.2 9M12 10.4v10M15.4 9.6c.3 3.6.4 6.6.2 9M17.8 8.4c.4 4 .6 7.4.4 10.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    conifere: '<path d="M12 2.2l3.3 5.2H8.7z"/><path d="M12 6.6l4.3 6.4H7.7z"/><path d="M12 11.4l5.3 7.4H6.7z"/><rect x="11.1" y="18.4" width="1.8" height="3.4" rx=".7"/>',
+    fougere: '<path d="M12.6 21.4C12 14.4 13.6 8.4 19.4 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13.4 17.8c2.7-.2 4.6-1.5 5.8-3.6M12.8 14.2c2.9-.2 4.9-1.5 6.3-3.8M12.6 10.6c2.9-.2 5-1.6 6.5-3.9M14.2 20.2c1.9-.3 3.4-1.1 4.5-2.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>',
+    graminee: '<path d="M4.6 21c1.3-6.6 2-11.2 3.6-15.2M9.4 21c.5-7 .8-11.6 2-16M14 21c-.7-6.2-.5-10.6.7-14.4M18.6 21c-1.8-5.8-2.7-9.6-3-13.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M17.6 7.6c1.3-.6 2.2-1.7 2.6-3.2M18.2 8c1.5.2 2.7-.3 3.4-1.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
+    boule: '<circle cx="12" cy="8.4" r="5.9"/><rect x="11.1" y="14" width="1.8" height="6" rx=".9"/><path d="M7 21.2h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    aube: '<path d="M3.2 16h17.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 4.6a5.6 5.6 0 0 1 5.6 5.6V16H6.4v-5.8A5.6 5.6 0 0 1 12 4.6z"/><path d="M12 1.2v1.9M7 3.3l1.3 1.3M17 3.3l-1.3 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    jour: '<circle cx="12" cy="12" r="4.6"/><path d="M12 2.4v2.6M12 19v2.6M2.4 12H5M19 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    coucher: '<path d="M2.6 17.4h18.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="11.6" r="5.4"/><path d="M4.4 4.6l1.8 1.8M19.6 4.6l-1.8 1.8M12 1.4v2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    nuit: '<path d="M20.2 14.8A8.8 8.8 0 0 1 9.2 3.8 9 9 0 1 0 20.2 14.8z"/><path d="M17 3.6l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+    automne: '<g transform="rotate(20 12 12)"><path d="M12 3c3.8 2.9 5.8 6.2 5.8 9.6 0 3.4-2.6 6-5.8 6s-5.8-2.6-5.8-6C6.2 9.2 8.2 5.9 12 3z"/></g><circle cx="5.8" cy="19.4" r="1.4"/><circle cx="9.4" cy="21.2" r="1"/>',
+    hiver: '<path d="M12 2.6v18.8M4.4 7.2l15.2 9.6M19.6 7.2L4.4 16.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="2"/>',
+    rapide: '<path d="M13.8 2.4L5.2 13.4h5.2l-1 8.2 8.6-11.2h-5.4z"/>',
+    diamant: '<path d="M7.6 3.6h8.8L20.6 9 12 20.4 3.4 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3.6 9h16.8M9.6 3.8 7.6 9l4.4 10.8L16.4 9l-2-5.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>',
+    vent: '<path d="M2.8 8.6h11.4a3.1 3.1 0 1 0-3.1-3.1M2.8 15.4h8.6a3.1 3.1 0 1 1-3.1 3.1M2.8 12h14.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    oiseaux: '<path d="M2.4 14c2.4 0 4.2-1.4 5.4-4.2 1.2 2.8 3 4.2 5.4 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M13.8 19.2c1.7 0 3-1 3.8-3 .8 2 2.1 3 3.8 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    tour: '<rect x="2.6" y="5.4" width="18.8" height="13.2" rx="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.2 9.2l5.4 2.8-5.4 2.8z"/>',
+    repos: '<rect x="6" y="6" width="12" height="12" rx="2.8"/>',
+    rotation: '<path d="M20.4 12a8.4 8.4 0 1 1-2.6-6.1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M18.8 2.6v4.2h-4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+    pause: '<rect x="7" y="5" width="3.6" height="14" rx="1.3"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.3"/>',
+    nouveau: '<rect x="3.4" y="3.4" width="17.2" height="17.2" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.6" cy="8.6" r="1.7"/><circle cx="15.4" cy="15.4" r="1.7"/><circle cx="12" cy="12" r="1.7"/>',
+    souris: '<rect x="7" y="2.8" width="10" height="18.4" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 6.4v3.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    loupe: '<circle cx="10.6" cy="10.6" r="6.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M15.6 15.6l4.8 4.8" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>',
+    pointeur: '<path d="M5.6 2.8l12.4 8.7-5.5.9 3.2 6.4-2.7 1.3-3.1-6.5-4.3 3.7z"/>',
+    clavier: '<rect x="2.4" y="6" width="19.2" height="12" rx="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 9.6h1.4M10 9.6h1.4M14 9.6h1.4M17.8 9.6h1.2M6 13h.9M9.4 13h1.4M12.8 13h1.4M16.2 13h2.8M7.4 16h9.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    lecture: '<path d="M7.4 4.6l12 7.4-12 7.4z"/>',
+    fermer: '<path d="M5.8 5.8l12.4 12.4M18.2 5.8L5.8 18.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+  };
+
+  /** Icône vectorielle : renvoie le balisage SVG d'un tracé connu. */
+  function icone(nom, taille) {
+    const trace = ICONES[nom] || ICONES.feuille;
+    const t = taille || '1em';
+    return '<svg class="ico" viewBox="0 0 24 24" width="' + t + '" height="' + t +
+      '" fill="currentColor" aria-hidden="true" focusable="false">' + trace + '</svg>';
+  }
+
+
+  /* ===========================================================================
      1. AMBIANCES ET SAISONS
      ======================================================================== */
   const AMBIANCES = {
     aube: {
-      nom: 'Aube', emoji: '🌅',
-      soleil: { az: -0.62, elev: 0.10, couleur: 0xffd0a0, intensite: 1.5 },
+      nom: 'Aube', icone: 'aube',
+      soleil: { az: -0.62, elev: 0.17, couleur: 0xffd0a0, intensite: 1.5 },
       hemisphere: { ciel: 0xbfd4e8, sol: 0x4c5a42, intensite: 0.7 },
       ciel: { top: 0x2f4a7a, horizon: 0xf0b98a, bas: 0x6a6a5c },
       brume: { couleur: 0xd9c8b4, near: 30, far: 190 },
       exposition: 1.02, ombresDouces: true
     },
     jour: {
-      nom: 'Plein jour', emoji: '☀️',
+      nom: 'Plein jour', icone: 'jour',
       soleil: { az: 0.65, elev: 0.78, couleur: 0xfff2d8, intensite: 1.55 },
       hemisphere: { ciel: 0xdff0ff, sol: 0x5c6b4a, intensite: 0.85 },
       ciel: { top: 0x3d78c8, horizon: 0xc9e2f2, bas: 0x8fa07a },
@@ -38,15 +93,15 @@ window.ARBRES_UI = (function () {
       exposition: 1.0
     },
     coucher: {
-      nom: 'Coucher', emoji: '🌇',
-      soleil: { az: 0.95, elev: 0.12, couleur: 0xff9a4e, intensite: 1.7 },
+      nom: 'Coucher', icone: 'coucher',
+      soleil: { az: 0.95, elev: 0.21, couleur: 0xff9a4e, intensite: 1.7 },
       hemisphere: { ciel: 0x8fa6cc, sol: 0x53422f, intensite: 0.6 },
       ciel: { top: 0x2a3f6b, horizon: 0xff9c5a, bas: 0x5a4636 },
       brume: { couleur: 0xe0a271, near: 25, far: 170 },
       exposition: 1.05
     },
     nuit: {
-      nom: 'Nuit', emoji: '🌙',
+      nom: 'Nuit', icone: 'nuit',
       soleil: { az: -0.9, elev: 0.55, couleur: 0x9fb6ff, intensite: 0.55 },
       hemisphere: { ciel: 0x2b3c66, sol: 0x1d2418, intensite: 0.45 },
       ciel: { top: 0x090f22, horizon: 0x1d2b46, bas: 0x10160f },
@@ -55,10 +110,10 @@ window.ARBRES_UI = (function () {
     }
   };
   const SAISONS = {
-    printemps: { nom: 'Printemps', emoji: '🌸', herbe: '#7fa54e', herbeSombre: '#4e6c2e' },
-    ete: { nom: 'Été', emoji: '☀️', herbe: '#6f8f3f', herbeSombre: '#46602a' },
-    automne: { nom: 'Automne', emoji: '🍂', herbe: '#8d8b46', herbeSombre: '#5d5a2c' },
-    hiver: { nom: 'Hiver', emoji: '❄️', herbe: '#8c9584', herbeSombre: '#5c6555' }
+    printemps: { nom: 'Printemps', icone: 'fleur', herbe: '#7fa54e', herbeSombre: '#4e6c2e' },
+    ete: { nom: 'Été', icone: 'feuille', herbe: '#6f8f3f', herbeSombre: '#46602a' },
+    automne: { nom: 'Automne', icone: 'automne', herbe: '#8d8b46', herbeSombre: '#5d5a2c' },
+    hiver: { nom: 'Hiver', icone: 'hiver', herbe: '#8c9584', herbeSombre: '#5c6555' }
   };
 
   /* ===========================================================================
@@ -118,36 +173,53 @@ window.ARBRES_UI = (function () {
   /* ===========================================================================
      3. TERRAIN ET DÉTAILS
      ======================================================================== */
+  /* Hauteur du sol : la même formule sert à déformer le terrain ET à poser
+     exactement dessus les arbres, l'allée, les rochers et les massifs. */
+  function hauteurTerrain(x, z, reliefSol, zonesPlates, ondulation) {
+    const ly = -z;                                   // le plan est tourné de -90°
+    const o = ondulation || {};
+    const amp = o.amplitude === undefined ? 1 : o.amplitude;
+    const debut = o.debut === undefined ? 6 : o.debut;
+    const fin = o.fin === undefined ? 26 : o.fin;
+    const d = Math.hypot(x, ly);
+    const bosse = Math.sin(x * .055) * Math.cos(ly * .048) * .55 +
+      Math.sin(x * .013 + ly * .011) * 1.4;
+    let h = bosse * amp * clamp((d - debut) / fin, 0, 1);
+    if (reliefSol) h += reliefSol(x, ly);
+    if (zonesPlates) for (const zn of zonesPlates) {
+      const dd = Math.hypot(x - zn[0], z - zn[1]);
+      const k = clamp((dd - zn[2] * .4) / (zn[2] * .6), 0, 1);
+      h *= k * k * (3 - 2 * k);
+    }
+    return h;
+  }
+
   function creerTerrain(opts, ambiance, saison, rng) {
     const q = opts.qualite === undefined ? 1 : opts.qualite;
     const S = SAISONS[saison] || SAISONS.ete;
     const group = new THREE.Group();
     const taille = opts.taille || 260;
 
-    const tex = A.memo('sol:' + saison, () => A.finish(A.groundCanvas({
+    // la même toile est répétée plus ou moins selon la taille de la scène :
+    // un sol de 340 m n'a pas intérêt à étirer 30 tuiles sur 11 m chacune
+    const cvs = A.memo('sol-canevas:' + saison, () => A.groundCanvas({
       base: S.herbe, sombre: S.herbeSombre, clair: '#a8bf6c'
-    }, A.RNG(4242)), 30, 30));
+    }, A.RNG(4242)));
+    const repet = Math.max(14, Math.round(taille / 4.2));
+    const tex = A.finish(cvs, repet, repet);
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: .95, metalness: 0 });
-    const sol = new THREE.Mesh(new THREE.PlaneGeometry(taille, taille, 1, 1), mat);
+
+    // une seule nappe de terrain, finement maillée : plus de facettes visibles
+    const seg = Math.max(48, Math.min(220, Math.round(taille / 1.6)));
+    const sol = new THREE.Mesh(new THREE.PlaneGeometry(taille, taille, seg, seg), mat);
+    const p = sol.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      p.setZ(i, hauteurTerrain(p.getX(i), -p.getY(i), opts.reliefSol, opts.zonesPlates, opts.ondulation));
+    }
+    sol.geometry.computeVertexNormals();
     sol.rotation.x = -Math.PI / 2;
     sol.receiveShadow = true;
     group.add(sol);
-
-    // ondulations légères du terrain : le jardin n'est pas une table
-    const ond = new THREE.Mesh(new THREE.PlaneGeometry(taille, taille, 40, 40),
-      new THREE.MeshStandardMaterial({ map: tex, roughness: .95, metalness: 0, transparent: true, opacity: 1 }));
-    const p = ond.geometry.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), y = p.getY(i);
-      const d = Math.hypot(x, y);
-      const bosse = Math.sin(x * .055) * Math.cos(y * .048) * .55 + Math.sin(x * .013 + y * .011) * 1.4;
-      p.setZ(i, bosse * clamp((d - 6) / 26, 0, 1) + (opts.reliefSol ? opts.reliefSol(x, y) : 0));
-    }
-    ond.geometry.computeVertexNormals();
-    ond.rotation.x = -Math.PI / 2;
-    ond.position.y = 0.01;
-    ond.receiveShadow = true;
-    group.add(ond);
 
     // touffes d'herbe hautes (bordures) : cartes croisées instanciées
     const nTouffes = Math.round((opts.touffes === undefined ? 900 : opts.touffes) * q);
@@ -647,7 +719,7 @@ gl_Position = projectionMatrix * mvPosition;`);
     const terrain = creerTerrain({
       qualite: qualite, taille: opts.tailleSol || 320, touffes: opts.touffes,
       cailloux: opts.cailloux, rayonDetail: opts.rayonDetail, decalage: opts.decalageDetail,
-      reliefSol: opts.reliefSol
+      reliefSol: opts.reliefSol, zonesPlates: opts.zonesPlates, ondulation: opts.ondulation
     }, ambiance, saison, rng);
     decor.add(terrain);
 
@@ -688,7 +760,10 @@ gl_Position = projectionMatrix * mvPosition;`);
           m.material.shadowSide = THREE.DoubleSide;
         }
       }
-      group.position.set(o.x || 0, o.y || 0, o.z || 0);
+      const x0 = o.x || 0, z0 = o.z || 0;
+      const y0 = (o.y || 0) + (o.sol === false ? 0
+        : hauteurTerrain(x0, z0, opts.reliefSol, opts.zonesPlates, opts.ondulation));
+      group.position.set(x0, y0, z0);
       group.rotation.y = o.rotation === undefined ? rng() * TAU : o.rotation;
       if (o.echelleGlobale) group.scale.setScalar(o.echelleGlobale);
       group.userData.especeId = id;
@@ -698,9 +773,24 @@ gl_Position = projectionMatrix * mvPosition;`);
       group.userData.nom = esp.nom;
       group.userData.latin = esp.latin;
       group.userData.description = esp.description;
-      group.userData.emoji = esp.emoji;
+      group.userData.icone = esp.icone;
       group.userData.famille = esp.famille;
       group.userData.rayon = esp.largeur * .5 * (o.echelleGlobale || 1);
+      // ombre douce de contact : même quand la carte d'ombres est grossière,
+      // l'arbre reste posé sur le sol
+      if (o.socle !== false) {
+        const r0 = Math.max(.7, group.userData.rayon * .62);
+        const socle = new THREE.Mesh(A.memoGeometrie('socle', () => new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2)),
+          A.memoMateriau('socle', () => new THREE.MeshBasicMaterial({
+            map: A.finish(A.socleCanvas(A.RNG(7)), 1, 1), transparent: true, depthWrite: false,
+            opacity: .30, color: 0x1d2410, side: THREE.FrontSide
+          })));
+        socle.scale.set(r0, 1, r0);
+        socle.position.y = .035;
+        socle.renderOrder = 1;
+        group.add(socle);
+        group.userData.socle = socle;
+      }
       return group;
     }
 
@@ -793,6 +883,7 @@ gl_Position = projectionMatrix * mvPosition;`);
     const moteur = {
       THREE, scene, camera, renderer, controles, arbres, decor, soleil, hemi, ciel, nuages, oiseaux,
       uTemps, planter, setAmbiance, temps: () => temps,
+      hauteurSol: (x, z) => hauteurTerrain(x, z, opts.reliefSol, opts.zonesPlates, opts.ondulation),
       ajouter: o => scene.add(o),
       enregistrerVent,
       surFrame: cb => listeners.push(cb),
@@ -840,7 +931,7 @@ gl_Position = projectionMatrix * mvPosition;`);
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'bouton-outil' + (o.v === defaut ? ' actif' : '');
-        b.innerHTML = (o.e ? '<span class="icone">' + o.e + '</span>' : '') + '<span>' + o.nom + '</span>';
+        b.innerHTML = (o.e ? '<span class="icone">' + icone(o.e) + '</span>' : '') + '<span>' + o.nom + '</span>';
         b.setAttribute('aria-pressed', o.v === defaut ? 'true' : 'false');
         b.onclick = () => {
           rangee.querySelectorAll('button').forEach(x => { x.classList.remove('actif'); x.setAttribute('aria-pressed', 'false'); });
@@ -874,7 +965,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   }
 
   return {
-    AMBIANCES, SAISONS, creerMoteur, creerBarre, creerCameraControles,
+    AMBIANCES, SAISONS, icone, ICONES, creerMoteur, creerBarre, creerCameraControles,
     creerTerrain, creerEau, creerAllee, creerRochers, creerHaie, appliquerVent
   };
 })();

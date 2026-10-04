@@ -223,6 +223,21 @@ window.ARBRES = (function () {
     return c;
   }
 
+  // Tache sombre douce, posée au pied des sujets : elle donne le contact
+  // avec le sol (ce que la carte d'ombres ne sait pas faire de loin).
+  function socleCanvas(rng) {
+    const W = 128, H = 128;
+    const { c, g } = surface(W, H);
+    const grad = g.createRadialGradient(W / 2, H / 2, 2, W / 2, H / 2, W / 2);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(.45, 'rgba(255,255,255,.62)');
+    grad.addColorStop(.78, 'rgba(255,255,255,.16)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+    return c;
+  }
+
   /* --- 2.2 Feuilles ------------------------------------------------------ */
   // Dessin d'une feuille : limbe, nervures, pétiole, brillances, morsures.
   function leafCanvas(cfg, rng, W, H, variant) {
@@ -693,6 +708,8 @@ window.ARBRES = (function () {
   // textures partagées (une seule instance par configuration)
   const cache = {};
   function memo(key, make) { return cache[key] || (cache[key] = make()); }
+  function memoGeometrie(key, make) { return memo('geo:' + key, make); }
+  function memoMateriau(key, make) { return memo('mat:' + key, make); }
 
   function barkTex(species, rng) {
     return memo('bark:' + species.id, () => finish(barkTexture(species.ecorce, rng), species.ecorce.repeat || 1, species.ecorce.repeatV || 1));
@@ -1161,7 +1178,7 @@ window.ARBRES = (function () {
 
     /* --------------------------------------------------------------- CHÊNE */
     chene: {
-      id: 'chene', nom: 'Chêne', latin: 'Quercus robur', emoji: '🌳',
+      id: 'chene', nom: 'Chêne', latin: 'Quercus robur', icone: 'arbre',
       famille: 'Feuillu majestueux', description:
         'Tronc massif, branches tortueuses, houppier large et lumineux. L’arbre roi du jardin, celui qui donne l’échelle.',
       couleurUI: '#6f8b3e', hauteur: 11.5, largeur: 9.5, sol: 'gazon',
@@ -1180,7 +1197,7 @@ window.ARBRES = (function () {
 
     /* --------------------------------------------------------------- HÊTRE */
     hetre: {
-      id: 'hetre', nom: 'Hêtre', latin: 'Fagus sylvatica', emoji: '🌳',
+      id: 'hetre', nom: 'Hêtre', latin: 'Fagus sylvatica', icone: 'arbreOvale',
       famille: 'Feuillu de sous-bois', description:
         'Écorce lisse comme une peau, houppier dense et régulier, feuillage cuivré en automne.',
       couleurUI: '#8a9a5b', hauteur: 12.5, largeur: 8, sol: 'humus',
@@ -1199,7 +1216,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------- BOULEAU */
     bouleau: {
-      id: 'bouleau', nom: 'Bouleau', latin: 'Betula pendula', emoji: '🌿',
+      id: 'bouleau', nom: 'Bouleau', latin: 'Betula pendula', icone: 'bouleau',
       famille: 'Feuillu léger', description:
         'Cime aérienne, fines ramilles retombantes et écorce blanche zébrée de lenticelles : la lumière traverse.',
       couleurUI: '#a8c07a', hauteur: 10.5, largeur: 5.5, sol: 'gazon',
@@ -1218,7 +1235,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------- TILLEUL */
     tilleul: {
-      id: 'tilleul', nom: 'Tilleul', latin: 'Tilia cordata', emoji: '🌳',
+      id: 'tilleul', nom: 'Tilleul', latin: 'Tilia cordata', icone: 'arbre',
       famille: 'Feuillu d’ombrage', description:
         'Feuilles en cœur, houppier en dôme très dense et floraison parfumée en début d’été.',
       couleurUI: '#7fa04a', hauteur: 12, largeur: 8.5, sol: 'gazon',
@@ -1237,7 +1254,7 @@ window.ARBRES = (function () {
 
     /* --------------------------------------------------- ÉRABLE DU JAPON */
     erable: {
-      id: 'erable', nom: 'Érable du Japon', latin: 'Acer palmatum', emoji: '🍁',
+      id: 'erable', nom: 'Érable du Japon', latin: 'Acer palmatum', icone: 'erable',
       famille: 'Petit arbre graphique', description:
         'Port en vase, plusieurs troncs, feuilles palmées pourpres qui s’embrasent à l’automne.',
       couleurUI: '#a8402f', hauteur: 5.6, largeur: 5.2, sol: 'terre',
@@ -1256,7 +1273,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------ CERISIER */
     cerisier: {
-      id: 'cerisier', nom: 'Cerisier en fleurs', latin: 'Prunus serrulata', emoji: '🌸',
+      id: 'cerisier', nom: 'Cerisier en fleurs', latin: 'Prunus serrulata', icone: 'fleur',
       famille: 'Arbre de floraison', description:
         'Charpente en vase, floraison rose blanc au printemps, feuillage bronze puis vert, feuilles rouges à l’automne.',
       couleurUI: '#e39ab4', hauteur: 7.2, largeur: 7, sol: 'gazon',
@@ -1276,7 +1293,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------ POMMIER */
     pommier: {
-      id: 'pommier', nom: 'Pommier', latin: 'Malus domestica', emoji: '🍎',
+      id: 'pommier', nom: 'Pommier', latin: 'Malus domestica', icone: 'pomme',
       famille: 'Arbre fruitier', description:
         'Tronc court et noueux, ramure tordue par les années, pommes et fleurs : l’arbre du verger.',
       couleurUI: '#c0553f', hauteur: 4.6, largeur: 5.4, sol: 'gazon',
@@ -1296,7 +1313,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------ OLIVIER */
     olivier: {
-      id: 'olivier', nom: 'Olivier', latin: 'Olea europaea', emoji: '🫒',
+      id: 'olivier', nom: 'Olivier', latin: 'Olea europaea', icone: 'olive',
       famille: 'Méditerranéen', description:
         'Tronc noueux et torsadé, feuillage argenté persistant : la lumière du Sud dans le jardin.',
       couleurUI: '#8f9a74', hauteur: 5.4, largeur: 5, sol: 'terre',
@@ -1315,7 +1332,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------- SAULE */
     saule: {
-      id: 'saule', nom: 'Saule pleureur', latin: 'Salix babylonica', emoji: '🌿',
+      id: 'saule', nom: 'Saule pleureur', latin: 'Salix babylonica', icone: 'saule',
       famille: 'Arbre pleureur', description:
         'Branches en cascade jusqu’au sol, feuilles fines qui frissonnent : l’arbre de la pièce d’eau.',
       couleurUI: '#8ab55e', hauteur: 8.4, largeur: 8.5, sol: 'berge',
@@ -1333,7 +1350,7 @@ window.ARBRES = (function () {
 
     /* ----------------------------------------------------------- CYPRÈS */
     cypres: {
-      id: 'cypres', nom: 'Cyprès', latin: 'Cupressus sempervirens', emoji: '🌲',
+      id: 'cypres', nom: 'Cyprès', latin: 'Cupressus sempervirens', icone: 'conifere',
       famille: 'Conifère colonnaire', description:
         'Flèche végétale sombre : il structure le jardin, marque les allées et coupe le vent.',
       couleurUI: '#3d5b34', hauteur: 8.5, largeur: 2.0, sol: 'terre',
@@ -1346,7 +1363,7 @@ window.ARBRES = (function () {
 
     /* ---------------------------------------------------------- ÉPICÉA */
     epicea: {
-      id: 'epicea', nom: 'Épicéa', latin: 'Picea abies', emoji: '🌲',
+      id: 'epicea', nom: 'Épicéa', latin: 'Picea abies', icone: 'conifere',
       famille: 'Conifère de futaie', description:
         'Silhouette conique régulière, rameaux retombants, cônes pendants : la forêt qui monte au ciel.',
       couleurUI: '#2f5b3a', hauteur: 14, largeur: 5, sol: 'humus',
@@ -1359,7 +1376,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------- PIN */
     pin: {
-      id: 'pin', nom: 'Pin sylvestre', latin: 'Pinus sylvestris', emoji: '🌲',
+      id: 'pin', nom: 'Pin sylvestre', latin: 'Pinus sylvestris', icone: 'conifere',
       famille: 'Conifère parasol', description:
         'Tronc nu couleur cannelle, houppier en parasol : le pin des landes et des jardins secs.',
       couleurUI: '#8a6a45', hauteur: 12.5, largeur: 7.5, sol: 'humus',
@@ -1372,7 +1389,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------ LILAS */
     lilas: {
-      id: 'lilas', nom: 'Lilas', latin: 'Syringa vulgaris', emoji: '💜',
+      id: 'lilas', nom: 'Lilas', latin: 'Syringa vulgaris', icone: 'grappe',
       famille: 'Arbuste de floraison', description:
         'Arbuste touffu à multiples troncs, grappes parfumées au printemps : le volume bas du massif.',
       couleurUI: '#9a7ab8', hauteur: 3.2, largeur: 3.4, sol: 'terre',
@@ -1391,7 +1408,7 @@ window.ARBRES = (function () {
 
     /* ----------------------------------------------------------- HORTENSIA */
     hortensia: {
-      id: 'hortensia', nom: 'Hortensia', latin: 'Hydrangea macrophylla', emoji: '💠',
+      id: 'hortensia', nom: 'Hortensia', latin: 'Hydrangea macrophylla', icone: 'ombelle',
       famille: 'Arbuste de massif', description:
         'Boule de feuilles et grosses ombelles bleues : parfaites pour habiller les pieds de mur et les massifs.',
       couleurUI: '#6f95cf', hauteur: 1.5, largeur: 1.8, sol: 'terre',
@@ -1410,7 +1427,7 @@ window.ARBRES = (function () {
 
     /* ------------------------------------------------------------- FOUGÈRE */
     fougere: {
-      id: 'fougere', nom: 'Fougère', latin: 'Dryopteris filix-mas', emoji: '🌿',
+      id: 'fougere', nom: 'Fougère', latin: 'Dryopteris filix-mas', icone: 'fougere',
       famille: 'Sous-bois', description:
         'Frondes arquées en rosette : structure le pied des arbres et les coins d’ombre humide.',
       couleurUI: '#3f6b3a', hauteur: 1.05, largeur: 1.6, sol: 'humus',
@@ -1422,7 +1439,7 @@ window.ARBRES = (function () {
 
     /* ---------------------------------------------------- GRAMINÉE DÉCORATIVE */
     stipa: {
-      id: 'stipa', nom: 'Cheveux d’ange', latin: 'Stipa tenuissima', emoji: '🌾',
+      id: 'stipa', nom: 'Cheveux d’ange', latin: 'Stipa tenuissima', icone: 'graminee',
       famille: 'Graminée', description:
         'Touffe blonde qui ondule au moindre souffle : elle adoucit les bordures et les pieds de massif.',
       couleurUI: '#c9b06a', hauteur: 1.0, largeur: 1.1, sol: 'terre',
@@ -1434,7 +1451,7 @@ window.ARBRES = (function () {
 
     /* --------------------------------------------------------- MASSIF DE BUIS */
     buis: {
-      id: 'buis', nom: 'Buis taillé', latin: 'Buxus sempervirens', emoji: '🧱',
+      id: 'buis', nom: 'Buis taillé', latin: 'Buxus sempervirens', icone: 'boule',
       famille: 'Haie et topiaire', description:
         'Volume net taillé au cordeau : il dessine les bordures, les allées et les parterres.',
       couleurUI: '#4a6b34', hauteur: 1.0, largeur: 1.0,
@@ -1905,8 +1922,8 @@ window.ARBRES = (function () {
     version: '2.0',
     RNG, ESPECES, buildTree, mergeGeometries, tube, leafCanvas, barkTexture, sprayCanvas,
     flowerCanvas, groundCanvas, soilCanvas, stoneCanvas, woodCanvas, cloudCanvas,
-    frondCanvas, tuftCanvas,
-    memo, finish, gray, paintGeo, fruitGeometry, crossPlanes, depthFor,
+    frondCanvas, tuftCanvas, socleCanvas,
+    memo, memoGeometrie, memoMateriau, finish, gray, paintGeo, fruitGeometry, crossPlanes, depthFor,
     feuilleCouleur, polyAt, polyLength, clamp, lerp, smooth, shade, hexToRgba,
     TEX: { leafTex, barkTex, sprayTex },
     _skeleton: skeleton, _seedOf: seedOf,

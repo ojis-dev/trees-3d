@@ -13,6 +13,13 @@
 <div class="entete">
   <h1>Galerie des essences</h1>
   <p>Dix-sept végétaux, tous dessinés par le code : aucune image, aucun modèle téléchargé. Choisissez un sujet pour l’examiner en 3D.</p>
+  <p class="origine">Vos modèles d’origine :
+    <a class="lien" href="arbre.html">Arbre</a>
+    <a class="lien" href="cerisier.html">Cerisier</a>
+    <a class="lien" href="epicea.html">Épicéa</a>
+    <a class="lien" href="erable.html">Érable</a>
+    <a class="lien" href="saule.html">Saule</a>
+  </p>
 </div>
 
 <div class="barre-outils" id="outils" role="toolbar" aria-label="Réglages de la vue"></div>
@@ -46,15 +53,15 @@
   const outils = U.creerBarre();
   document.getElementById('outils').replaceWith(outils.element);
   outils.groupe('Ambiance', 'ambiance', [
-    { v: 'aube', nom: 'Aube', e: '🌅' }, { v: 'jour', nom: 'Jour', e: '☀️' },
-    { v: 'coucher', nom: 'Coucher', e: '🌇' }, { v: 'nuit', nom: 'Nuit', e: '🌙' }
+    { v: 'aube', nom: 'Aube', e: 'aube' }, { v: 'jour', nom: 'Jour', e: 'jour' },
+    { v: 'coucher', nom: 'Coucher', e: 'coucher' }, { v: 'nuit', nom: 'Nuit', e: 'nuit' }
   ], 'jour', v => { ambiance = v; moteur.setAmbiance(v); });
   outils.groupe('Saison', 'saison', [
-    { v: 'printemps', nom: 'Printemps', e: '🌸' }, { v: 'ete', nom: 'Été', e: '🌿' },
-    { v: 'automne', nom: 'Automne', e: '🍂' }, { v: 'hiver', nom: 'Hiver', e: '❄️' }
+    { v: 'printemps', nom: 'Printemps', e: 'fleur' }, { v: 'ete', nom: 'Été', e: 'feuille' },
+    { v: 'automne', nom: 'Automne', e: 'automne' }, { v: 'hiver', nom: 'Hiver', e: 'hiver' }
   ], 'ete', v => { saison = v; montrer(courant); });
   outils.groupe('Rotation', 'rotation', [
-    { v: 'marche', nom: 'Rotation auto', e: '🔄' }, { v: 'pause', nom: 'Pause', e: '⏸️' }
+    { v: 'marche', nom: 'Rotation auto', e: 'rotation' }, { v: 'pause', nom: 'Pause', e: 'pause' }
   ], 'marche', v => { moteur.controles.auto = (v === 'marche'); });
 
   const grille = document.getElementById('grille');
@@ -77,7 +84,7 @@
     const S = A.ESPECES[id];
     sujet = moteur.planter(id, { x: 0, z: 0, seed: 909 + id.length * 37, saison: saison, qualite: 1.1, rotation: .5 });
     moteur.controles.volerVers(new THREE.Vector3(0, S.hauteur * .45, 0),
-      S.hauteur * (S.forme === 'rosette' || S.forme === 'volume' ? 3.4 : 2.15), null, 1.25);
+      S.hauteur * (S.forme === 'rosette' || S.forme === 'volume' ? 2.9 : 1.78), null, 1.25);
     history.replaceState(null, '', '?espece=' + id);
     document.querySelectorAll('.carte-espece').forEach(c => c.classList.toggle('actif', c.dataset.id === id));
   }
@@ -91,7 +98,7 @@
       b.className = 'carte-espece' + (S.id === courant ? ' actif' : '');
       b.dataset.id = S.id;
       b.innerHTML =
-        '<h3><span>' + S.emoji + '</span>' + S.nom + '</h3>' +
+        '<h3><span>' + U.icone(S.icone, '1.05rem') + '</span>' + S.nom + '</h3>' +
         '<p class="latin">' + S.latin + '</p>' +
         '<p>' + S.description + '</p>' +
         '<span class="puce">' + S.famille + '</span>';

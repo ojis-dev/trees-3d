@@ -13,6 +13,13 @@
 <header class="entete">
   <h1>Le Jardin des Arbres</h1>
   <p>Dix-sept essences, un parc entier — tout est dessiné par le code : écorces, feuilles, fleurs, sol et ciel.</p>
+  <p class="origine">Vos cinq modèles d’origine, conservés tels quels :
+    <a class="lien" href="arbre.html">Arbre</a>
+    <a class="lien" href="cerisier.html">Cerisier</a>
+    <a class="lien" href="epicea.html">Épicéa</a>
+    <a class="lien" href="erable.html">Érable</a>
+    <a class="lien" href="saule.html">Saule</a>
+  </p>
 </header>
 
 <div class="barre-outils" id="outils" role="toolbar" aria-label="Réglages de la scène"></div>
@@ -23,9 +30,9 @@
 </aside>
 
 <section class="panneau panneau-fiche" id="fiche" hidden aria-live="polite">
-  <button class="fermer" id="fermer-fiche" aria-label="Fermer la fiche">✕</button>
+  <button class="fermer" id="fermer-fiche" aria-label="Fermer la fiche"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M5.8 5.8l12.4 12.4M18.2 5.8L5.8 18.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
   <div class="fiche-titre">
-    <span class="emoji" id="fiche-emoji"></span>
+    <span class="vignette" id="fiche-icone"></span>
     <div>
       <h2 id="fiche-nom"></h2>
       <p class="latin" id="fiche-latin"></p>
@@ -45,7 +52,7 @@
 <div class="coin" id="compteur" aria-live="polite"></div>
 
 <div class="aide disparait" id="aide">
-  <span>🖱️ Glisser : tourner</span><span>🔍 Molette / pincer : zoomer</span><span>👆 Cliquer un arbre : sa fiche</span><span>⌨️ Flèches : pivoter</span><span>▶️ V : visite guidée</span>
+  
 </div>
 
 <div class="chargement" id="chargement">
@@ -84,7 +91,10 @@
     cible: [0, 4.5, -2], distance: 46, azimut: .9, inclinaison: 1.22,
     tailleSol: 340, touffes: 1500, cailloux: 200, rayonDetail: 46,
     etendueOmbres: 30, libelleAria: 'Jardin 3D', seed: 20261004,
-    vitesseAuto: .00028
+    vitesseAuto: .00028,
+    // le jardin planté reste plat ; le terrain n'ondule qu'au-delà de la lisière
+    ondulation: { amplitude: 1.5, debut: 48, fin: 30 },
+    zonesPlates: [[19, -9, 11]]        // la pièce d'eau et ses berges
   });
   const arbre = { decor: null, arbres: [], total: 0 };
 
@@ -118,7 +128,7 @@
         pourcentage.textContent = Math.round(p * 100) + ' %';
         if (dernier) {
           const esp = A.ESPECES[dernier.userData.especeId];
-          detail.textContent = 'Plantation : ' + esp.emoji + ' ' + esp.nom + ' (' + i + '/' + n + ')';
+          detail.textContent = 'Plantation : ' + esp.nom + ' (' + i + '/' + n + ')';
         }
       },
       onFini: (arbres) => {
@@ -142,25 +152,25 @@
   const outils = U.creerBarre();
   document.getElementById('outils').replaceWith(outils.element);
   outils.groupe('Ambiance', 'ambiance', [
-    { v: 'aube', nom: 'Aube', e: '🌅' }, { v: 'jour', nom: 'Jour', e: '☀️' },
-    { v: 'coucher', nom: 'Coucher', e: '🌇' }, { v: 'nuit', nom: 'Nuit', e: '🌙' }
+    { v: 'aube', nom: 'Aube', e: 'aube' }, { v: 'jour', nom: 'Jour', e: 'jour' },
+    { v: 'coucher', nom: 'Coucher', e: 'coucher' }, { v: 'nuit', nom: 'Nuit', e: 'nuit' }
   ], etat.ambiance, v => { etat.ambiance = v; moteur.setAmbiance(v); });
 
   outils.groupe('Saison', 'saison', [
-    { v: 'printemps', nom: 'Printemps', e: '🌸' }, { v: 'ete', nom: 'Été', e: '🌿' },
-    { v: 'automne', nom: 'Automne', e: '🍂' }, { v: 'hiver', nom: 'Hiver', e: '❄️' }
+    { v: 'printemps', nom: 'Printemps', e: 'fleur' }, { v: 'ete', nom: 'Été', e: 'feuille' },
+    { v: 'automne', nom: 'Automne', e: 'automne' }, { v: 'hiver', nom: 'Hiver', e: 'hiver' }
   ], etat.saison, v => { etat.saison = v; reconstruire(); });
 
   outils.groupe('Détail', 'qualite', [
-    { v: 'rapide', nom: 'Rapide', e: '⚡' }, { v: 'equilibre', nom: 'Équilibré', e: '🌿' },
-    { v: 'maximal', nom: 'Maximal', e: '💎' }
+    { v: 'rapide', nom: 'Rapide', e: 'rapide' }, { v: 'equilibre', nom: 'Équilibré', e: 'feuille' },
+    { v: 'maximal', nom: 'Maximal', e: 'diamant' }
   ], 'equilibre', v => {
     etat.qualite = v === 'rapide' ? .45 : v === 'maximal' ? 1.25 : .75;
     reconstruire();
   });
 
   outils.groupe('Vie', 'vie', [
-    { v: 'vent', nom: 'Vent', e: '🍃' }, { v: 'oiseaux', nom: 'Oiseaux', e: '🐦' }
+    { v: 'vent', nom: 'Vent', e: 'vent' }, { v: 'oiseaux', nom: 'Oiseaux', e: 'oiseaux' }
   ], null, v => {
     if (v === 'vent') {
       etat.vent = !etat.vent;
@@ -172,7 +182,7 @@
   });
 
   outils.groupe('Visite', 'visite', [
-    { v: 'tour', nom: 'Visite guidée', e: '🎬' }, { v: 'repos', nom: 'Arrêter', e: '⏹' }
+    { v: 'tour', nom: 'Visite guidée', e: 'tour' }, { v: 'repos', nom: 'Arrêter', e: 'repos' }
   ], null, v => {
     if (v === 'tour') demarrerVisite(); else arreterVisite();
   });
@@ -185,7 +195,7 @@
   function montrerFiche(g, depuisListe) {
     const esp = A.ESPECES[g.userData.especeId];
     etat.selection = g;
-    document.getElementById('fiche-emoji').textContent = esp.emoji;
+    document.getElementById('fiche-icone').innerHTML = U.icone(esp.icone);
     document.getElementById('fiche-nom').textContent = esp.nom;
     document.getElementById('fiche-latin').textContent = esp.latin;
     document.getElementById('fiche-famille').textContent = esp.famille;
@@ -213,7 +223,7 @@
       const esp = A.ESPECES[id];
       const li = document.createElement('li');
       const b = document.createElement('button');
-      b.innerHTML = '<span class="emoji">' + esp.emoji + '</span><span class="nom">' + esp.nom + '</span>' +
+      b.innerHTML = '<span class="vignette">' + U.icone(esp.icone) + '</span><span class="nom">' + esp.nom + '</span>' +
         '<span class="badge">' + moteur.especesPresentes.get(id) + '</span>';
       b.title = esp.description;
       b.onclick = () => {
@@ -245,7 +255,7 @@
     if (survol) {
       const esp = A.ESPECES[survol.userData.especeId];
       bulle.hidden = false;
-      bulle.innerHTML = '<b>' + esp.emoji + ' ' + esp.nom + '</b><i>' + esp.latin + '</i>';
+      bulle.innerHTML = '<b>' + U.icone(esp.icone) + ' ' + esp.nom + '</b><i>' + esp.latin + '</i>';
       bulle.style.left = Math.min(e.clientX + 16, innerWidth - 240) + 'px';
       bulle.style.top = (e.clientY - 12) + 'px';
     } else bulle.hidden = true;
@@ -317,6 +327,11 @@
   // l'aide s'efface d'elle-même après quelques secondes, ou dès la première
   // interaction : on ne veut pas d'un mode d'emploi qui reste à l'écran
   const aide = document.getElementById('aide');
+  aide.innerHTML = [
+    ['souris', 'Glisser : tourner'], ['loupe', 'Molette / pincer : zoomer'],
+    ['pointeur', 'Cliquer un arbre : sa fiche'], ['clavier', 'Flèches : pivoter'],
+    ['lecture', 'V : visite guidée']
+  ].map(p => '<span>' + U.icone(p[0]) + ' ' + p[1] + '</span>').join('');
   const effacerAide = () => aide.classList.add('disparait');
   setTimeout(effacerAide, 9000);
   moteur.renderer.domElement.addEventListener('pointerdown', () => setTimeout(effacerAide, 2500));

@@ -127,7 +127,8 @@ console.log('\n1. Catalogue');
 const especes = A.liste();
 ok(especes.length >= 15, 'au moins 15 essences (' + especes.length + ')');
 for (const e of especes) {
-  ok(!!e.nom && !!e.latin && !!e.famille && !!e.description && !!e.emoji, e.nom + ' : fiche complète');
+  ok(!!e.nom && !!e.latin && !!e.famille && !!e.description && !!e.icone, e.nom + ' : fiche complète');
+  ok(!!U.ICONES[e.icone], e.nom + ' : icône « ' + e.icone + ' » dessinée');
 }
 
 console.log('\n2. Construction de chaque essence (qualité 1)');
@@ -148,7 +149,7 @@ for (const e of especes) {
     if (!isFinite(tris) || tris <= 0) throw new Error('géométrie vide');
     stats.push({ id: e.id, meshes, inst, tris: Math.round(tris) });
     return meshes + ' maillages, ' + inst + ' instances, ' + Math.round(tris) + ' facettes';
-  }, e.emoji + ' ' + e.nom);
+  }, e.nom);
 }
 const total = stats.reduce((s, x) => s + x.tris, 0);
 console.log('  → total ' + (total / 1000).toFixed(0) + ' k facettes pour un exemplaire de chaque');

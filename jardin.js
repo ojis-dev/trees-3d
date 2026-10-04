@@ -225,8 +225,8 @@ window.JARDIN = (function () {
           ? esp.port.levels - (palier === 'heros' ? 1 : palier === 'moyen' ? 2 : 3) : undefined;
         const rgl = {
           heros: { q: .85, feuilles: .62, rameaux: 2, segments: [3, 4] },
-          moyen: { q: .55, feuilles: .48, rameaux: 2, segments: [2, 3] },
-          fond: { q: .4, feuilles: .34, rameaux: 1, segments: [2, 2] },
+          moyen: { q: .55, feuilles: .56, rameaux: 2, segments: [2, 3] },
+          fond: { q: .4, feuilles: .46, rameaux: 1, segments: [2, 2] },
           petit: { q: .5, feuilles: .8, rameaux: 2, segments: [2, 3] }
         }[palier];
         const g = moteur.planter(p.id, {

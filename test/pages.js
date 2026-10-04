@@ -66,8 +66,15 @@ function creerSandbox(url) {
       return elements.get(id);
     },
     querySelector: () => null,
-    querySelectorAll: () => []
+    querySelectorAll: () => [],
+    // les pages d'origine lisent le thème via getComputedStyle : on renvoie la valeur claire
+    defaultView: null
   };
+  const styleStub = {
+    getPropertyValue: (nom) => (nom === '--bg' ? '#e4e9df' : ''),
+    setProperty() { }, removeProperty() { }
+  };
+  documentStub.documentElement.style = styleStub;
   const sb = {
     console, Math, Date, JSON, Object, Array, Number, String, Boolean, Error, isNaN, isFinite,
     parseFloat, parseInt, Uint8Array, Uint8ClampedArray, Uint16Array, Uint32Array, Int32Array,
@@ -75,7 +82,8 @@ function creerSandbox(url) {
     setTimeout: (cb) => { (sb.__minuteurs = sb.__minuteurs || []).push(cb); return sb.__minuteurs.length; },
     clearTimeout() { },
     setInterval: () => 1, clearInterval() { },
-    document: documentStub, navigator: { userAgent: 'node' }, devicePixelRatio: 1,
+    document: documentStub, navigator: { userAgent: 'node', platform: 'linux', maxTouchPoints: 0 }, devicePixelRatio: 1,
+    getComputedStyle: () => styleStub,
     performance: { now: () => Date.now() },
     requestAnimationFrame: cb => { frames.push(cb); return frames.length; },
     cancelAnimationFrame() { }, matchMedia: () => ({ matches: false, addEventListener() { } }),
@@ -107,7 +115,8 @@ function creerSandbox(url) {
 }
 
 /* --------------------------------------------------------------- tests --- */
-const pages = ['index.html', 'espece.html?espece=erable', 'espece.html?espece=saule', 'galerie.html', 'arbre.html'];
+const pages = ['index.html', 'espece.html?espece=erable', 'espece.html?espece=saule', 'galerie.html',
+  'arbre.html', 'cerisier.html', 'epicea.html', 'erable.html', 'saule.html'];
 let erreurs = 0;
 const bilans = [];
 
